@@ -50,7 +50,7 @@ func main() {
 				return nil
 			}
 			// apache rewritemap expects NULL if no match is found
-			os.Stdout.Write([]byte("NULL"))
+			os.Stdout.Write([]byte("NULL\n"))
 
 			return nil
 
