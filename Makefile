@@ -2,11 +2,11 @@ GOROOT := /usr/local/go
 GOPATH := $(shell pwd)
 GOBIN  := $(GOPATH)/bin
 PATH   := $(GOROOT)/bin:$(PATH)
-DEPS   := github.com/boltdb/bolt
+DEPS   := github.com/boltdb/bolt google.golang.org/grpc github.com/mitchellh/cli gopkg.in/redis.v4
 
 
 
-all: rewriter importer
+all: rewriter csvimporter
 
 deps: $(DEPS)
 	GOPATH=$(GOPATH) go get -u $^
@@ -20,7 +20,7 @@ rewriter: rewriter.go
 		GOPATH=$(GOPATH) go build -o $@ -v $^
 		touch $@
 
-importer: importer.go
+csvimporter: csvimporter.go
     # always format code
 		GOPATH=$(GOPATH) go fmt $^
 		# vet it
@@ -33,5 +33,5 @@ importer: importer.go
 .PHONY: $(DEPS) clean
 
 clean:
-	rm -f rewriter importer
+	rm -f rewriter csvimporter
 

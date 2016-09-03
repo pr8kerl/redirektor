@@ -20,7 +20,7 @@ func init() {
 
 func main() {
 
-	fmt.Fprintf(os.Stderr, "redirektor bucket name: %s\n", bname)
+	//fmt.Fprintf(os.Stderr, "redirektor bucket name: %s\n", bname)
 
 	db, err := bolt.Open("redirektor.db", 0600, &bolt.Options{ReadOnly: true})
 	if err != nil {
