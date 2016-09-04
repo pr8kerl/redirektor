@@ -6,32 +6,32 @@ DEPS   := github.com/boltdb/bolt google.golang.org/grpc github.com/mitchellh/cli
 
 
 
-all: rewriter csvimporter
+all: redirektor csvimporter
 
 deps: $(DEPS)
 	GOPATH=$(GOPATH) go get -u $^
 
-rewriter: rewriter.go
+redirektor: cmd/redirektor/main.go
     # always format code
 		GOPATH=$(GOPATH) go fmt $^
 		# vet it
 		GOPATH=$(GOPATH) go tool vet $^
     # binary
-		GOPATH=$(GOPATH) go build -o $@ -v $^
+		GOPATH=$(GOPATH) go build -o bin/$@ -v $^
 		touch $@
 
-csvimporter: csvimporter.go
+csvimporter: cmd/csvimporter/main.go
     # always format code
 		GOPATH=$(GOPATH) go fmt $^
 		# vet it
 		GOPATH=$(GOPATH) go tool vet $^
     # binary
-		GOPATH=$(GOPATH) go build -o $@ -v $^
+		GOPATH=$(GOPATH) go build -o bin/$@ -v $^
 		touch $@
 
 
 .PHONY: $(DEPS) clean
 
 clean:
-	rm -f rewriter csvimporter
+	rm -f bin/*
 
