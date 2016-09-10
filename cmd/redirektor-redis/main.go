@@ -16,16 +16,27 @@ var (
 
 func init() {
 	basename = filepath.Base(os.Args[0])
-	cfgfile = os.Getenv("REDIREKTOR_CFG")
 }
 
 func main() {
 
-	// config
-	cfg, err := initialiseConfig(cfgfile)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error : failed to initialise config : %s", err)
-		os.Exit(1)
+	cfgfile = os.Getenv("REDIREKTOR_CFG")
+	// config defaults
+	// use basename as default key prefix
+	var cfg = &ConfigSection{
+		DBAddr:     "localhost:6379",
+		DBID:       0,
+		DBPassword: "",
+		KeyPrefix:  basename,
+	}
+	if cfgfile != "" {
+		// load custom settings from configfile
+		var err error
+		cfg, err = initialiseConfig(cfgfile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error : failed to initialise config : %s", err)
+			os.Exit(1)
+		}
 	}
 
 	var prefix bytes.Buffer
