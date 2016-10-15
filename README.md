@@ -2,7 +2,23 @@
 
 ## WIP
 
-An apache rewritemap program using BoltDB.
+Apache RewriteMap management - work in progress
+
+Looks like python is best to manage berkeleydb files.
+
+* download and install [BerkeleyDB 4.7](http://download.oracle.com/berkeley-db/db-4.7.25.tar.gz) (same version as used by Apache HTTPD in Amazon Linux)
+* build it
+
+```
+tar -xvzf db-4.7.25.tar.gz
+cd db-4.7.25/build_unix
+../dist/configure --enable-static --enable-shared --enable-compat185 
+make
+sudo make install
+export BERKELEYDB_DIR=/usr/local/BerkeleyDB.4.7
+pip3 install bsddb3
+```
+
 
 And another apache rewritemap program using Redis.
 
