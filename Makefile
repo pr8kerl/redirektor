@@ -47,7 +47,7 @@ csv2gdbm: cmd/csv2gdbm/main.go
 		GOPATH=$(GOPATH) go build -o bin/$@ -v $^
 		touch bin/$@
 
-csv2dbm: cmd/csv2dbm/main.go
+csv2dbm: cmd/csv2dbm/main.go cmd/csv2dbm/import.go cmd/csv2dbm/export.go
     # always format code
 		GOPATH=$(GOPATH) go fmt $^
 		# vet it
