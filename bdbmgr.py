@@ -62,7 +62,7 @@ The following subcommands are available:
     def __import2db(self, dbfile, csvfile):
 
         try:
-        	self.rdb.open(dbfile,None,db.DB_HASH)
+        	self.rdb.open(dbfile,None,db.DB_HASH, db.DB_CREATE)
         except Exception as e:
         	print('db error: unable to open db stack: {}'.format( dbfile ))
         	print(e)
