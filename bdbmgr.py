@@ -2,13 +2,12 @@
 
 from bsddb3 import db
 
-
-import argparse
-import sys
+import argparse, sys, csv
 
 
 class BDBMgr(object):
-    db = None
+    rdb = None
+    args = None
 
     def __init__(self):
         parser = argparse.ArgumentParser(
@@ -16,22 +15,23 @@ class BDBMgr(object):
             description='manage berkeley db files',
             usage='''bdbmgr.py <command> [<args>]
 
-The following sub commands are available:
+The following subcommands are available:
    importdb     import from csv to bdb
    exportdb     export from bdb to csv
    syncdb       poll redis master and update bdb with changes
 ''')
-        parser.add_argument('command', help='subcommand to run')
+        parser.add_argument('subcommand', help='subcommand to run')
         parser.add_argument('--version', action='version', version='%(prog)s 0.1.0')
         # parse_args defaults to [1:] for args, but you need to
         # exclude the rest of the args too, or validation will fail
         args = parser.parse_args(sys.argv[1:2])
-        if not hasattr(self, args.command):
-            print('unrecognized command')
+        if not hasattr(self, args.subcommand):
+            print('unrecognized subcommand')
             parser.print_help()
             exit(1)
+        self.rdb = db.DB()
         # use dispatch pattern to invoke method with same name
-        getattr(self, args.command)()
+        getattr(self, args.subcommand)()
 
     def importdb(self):
         parser = argparse.ArgumentParser(
@@ -43,38 +43,65 @@ The following sub commands are available:
         # now that we're inside a subcommand, ignore the first
         # TWO argvs, ie the command (git) and the subcommand (commit)
         args = parser.parse_args(sys.argv[2:])
-        print('running bdbmgr importdb, csv={}, db={}'.format( args.csv, args.db ))
+        print('bdbmgr importdb, csv={}, db={}'.format( args.csv, args.db ))
+        self.rdbfile = args.db
+        self.__import2db(args.db, args.csv)
 
     def exportdb(self):
         parser = argparse.ArgumentParser(
             description='export a bdb to csv')
         # NOT prefixing the argument with -- means it's not optional
         parser.add_argument('--version', action='version', version='%(prog)s 0.1.0')
-        parser.add_argument('--csv', required=False )
+        parser.add_argument('--csv', required=True )
         parser.add_argument('--db', required=True )
         args = parser.parse_args(sys.argv[2:])
-        print('running bdbmgr exportdb, csv={}, db={}'.format( args.csv, args.db ))
-        export2csv(args.db)
+        print('bdbmgr exportdb, csv={}, db={}'.format( args.csv, args.db ))
+        self.rdbfile = args.db
+        self.__export2csv(args.db, args.csv)
+
+    def __import2db(self, dbfile, csvfile):
+
+        try:
+        	self.rdb.open(dbfile,None,db.DB_HASH)
+        except Exception as e:
+        	print('db error: unable to open db stack: {}'.format( dbfile ))
+        	print(e)
+        	sys.exit(99)
+
+        cursor = self.rdb.cursor()
+        rec = cursor.first()
+
+        with open(csvfile, newline='') as f:
+            reader = csv.reader(f)
+            try:
+                for row in reader:
+                    self.rdb.put(str.encode(row[0]), str.encode(row[1]))
+            except Exception as e:
+                sys.exit('csv error: file {}, line {}: {}'.format(csvfile, reader.line_num, e))
+
+        self.rdb.close()
 
 
-def export2csv(dbfile):
-    rdb = db.DB()
-    try:
-    	rdb.open(dbfile,None,db.DB_HASH,db.DB_DIRTY_READ)
-    except Exception as e:
-    	print('error: unable to open db stack: {}'.format( dbfile ))
-    	print(e)
-    	sys.exit(99)
+    def __export2csv(self, dbfile, csvfile):
 
-    cursor = rdb.cursor()
-    rec = cursor.first()
+        try:
+        	self.rdb.open(dbfile,None,db.DB_HASH,db.DB_DIRTY_READ)
+        except Exception as e:
+        	print('error: unable to open db stack: {}'.format( dbfile ))
+        	print(e)
+        	sys.exit(99)
 
-    while rec:
-        key = rec[0]
-        value = rec[1]
-        print('{:s},{:s}'.format(key.decode('utf-8'), value.decode('utf-8')))
-        rec = cursor.next()
-    rdb.close()
+        with open(csvfile, 'w') as f:
+            cursor = self.rdb.cursor()
+            rec = cursor.first()
+
+            while rec:
+                key = rec[0]
+                value = rec[1]
+                print('{:s},{:s}'.format(key.decode('ascii'), value.decode('utf-8')), file=f )
+                rec = cursor.next()
+
+        self.rdb.close()
 
 
 if __name__ == '__main__':
