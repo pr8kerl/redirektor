@@ -55,3 +55,8 @@ csvimporter bolt: import csv data to a BoltDB file
 		--bucket <value>	the BoltDB bucket to import data into
 		--csv <filename>	the csv filename to import data from
 ```
+
+* delete all keys in one hit
+```
+redis keys '*'|cargs redis-cli del 
+```

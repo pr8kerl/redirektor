@@ -74,11 +74,26 @@ The following subcommands are available:
         # now that we're inside a subcommand, ignore the first
         # TWO argvs, ie the command (git) and the subcommand (commit)
         args = parser.parse_args(sys.argv[2:])
-        print('bdbmgr importdb, db={}'.format( args.db ))
+        print('bdbmgr redis2db, db={}'.format( args.db ))
         if not args.redis:
             self.rredis = redis.StrictRedis(host='localhost', port=6379, db=0)
         self.rdbfile = args.db
         self.__redis2db(args.db)
+
+    def csv2redis(self):
+        parser = argparse.ArgumentParser(
+            description='import from csv file to redis')
+        # prefixing the argument with -- means it's optional
+        parser.add_argument('--version', action='version', version='%(prog)s 0.1.0')
+        parser.add_argument('--csv', required=True )
+        parser.add_argument('--redis', required=None )
+        # now that we're inside a subcommand, ignore the first
+        # TWO argvs, ie the command (git) and the subcommand (commit)
+        args = parser.parse_args(sys.argv[2:])
+        print('bdbmgr csv2redis, csv={}'.format( args.csv ))
+        if not args.redis:
+            self.rredis = redis.StrictRedis(host='localhost', port=6379, db=0)
+        self.__csv2redis(args.csv)
 
 
     def __csv2db(self, dbfile, csvfile):
@@ -141,7 +156,7 @@ The following subcommands are available:
         try:
             for key in self.rredis.scan_iter():
                 value = self.rredis.get(key)
-                print('{:s},{:s}'.format(key.decode('utf-8'), value.decode('utf-8')) )
+                #print('{:s},{:s}'.format(key.decode('utf-8'), value.decode('utf-8')) )
                 self.rdb.put(key, value)
         except Exception as e:
         	print('error scanning redis into db: {}'.format( dbfile ))
@@ -149,6 +164,19 @@ The following subcommands are available:
         	sys.exit(99)
 
         self.rdb.close()
+
+    def __csv2redis(self, csvfile):
+
+        with open(csvfile, newline='') as f:
+            reader = csv.reader(f)
+            try:
+                with self.rredis.pipeline() as pipe:
+                    for row in reader:
+                        pipe.set(str.encode(row[0]), str.encode(row[1]))
+                    pipe.execute()
+            except Exception as e:
+                sys.exit('csv2redis error: file {}, line {}: {}'.format(csvfile, reader.line_num, e))
+
 
 if __name__ == '__main__':
     BDBMgr()
