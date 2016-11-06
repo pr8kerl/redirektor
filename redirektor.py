@@ -4,13 +4,14 @@ from bsddb3 import db
 from urllib.parse import urlparse
 from time import sleep
 
-import argparse, sys, csv, redis, datetime
+import argparse, sys, csv, redis, datetime, os
 
 
 class BDBMgr(object):
     version = '0.1.0'
     rdb = None
     rredis = None
+    redis_url = 'redis://localhost:6379/0'
     args = None
 
     def __init__(self):
@@ -38,6 +39,10 @@ The following subcommands are available:
             parser.print_help()
             exit(1)
         self.rdb = db.DB()
+        if 'REDIREKTOR_BDB' in os.environ:
+            self.rdbfile = os.getenv['REDIREKTOR_BDB']
+        if 'REDIREKTOR_REDIS' in os.environ:
+            self.redis_url = os.getenv['REDIREKTOR_REDIS']
         # use dispatch pattern to invoke method with same name
         getattr(self, args.subcommand)()
 
@@ -52,13 +57,18 @@ The following subcommands are available:
         # prefixing the argument with -- means it's optional
         parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=self.version))
         parser.add_argument('--csv', required=True )
-        parser.add_argument('--db', required=True )
+        parser.add_argument('--db', required=False )
         # now that we're inside a subcommand, ignore the first
         # TWO argvs, ie the command (git) and the subcommand (commit)
         args = parser.parse_args(sys.argv[2:])
-        print('bdbmgr importdb, csv={}, db={}'.format( args.csv, args.db ))
-        self.rdbfile = args.db
-        self.__csv2db(args.db, args.csv)
+        # args.db overrides REDIREKTOR_BDB
+        if args.db:
+            self.rdbfile = args.db
+        if not self.rdbfile:
+            print('error: no db file provided; use --db or env var REDIREKTOR_BDB')
+            sys.exit(99)
+        print('bdbmgr csv2db, csv={}, db={}'.format( args.csv, self.rdbfile ))
+        self.__csv2db(args.csv)
 
     def db2csv(self):
         parser = argparse.ArgumentParser(
@@ -66,11 +76,16 @@ The following subcommands are available:
         # NOT prefixing the argument with -- means it's not optional
         parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=self.version))
         parser.add_argument('--csv', required=True )
-        parser.add_argument('--db', required=True )
+        parser.add_argument('--db', required=False )
         args = parser.parse_args(sys.argv[2:])
-        print('bdbmgr exportdb, csv={}, db={}'.format( args.csv, args.db ))
-        self.rdbfile = args.db
-        self.__db2csv(args.db, args.csv)
+        # args.db overrides REDIREKTOR_BDB
+        if args.db:
+            self.rdbfile = args.db
+        if not self.rdbfile:
+            print('error: no db file provided; use --db or env var REDIREKTOR_BDB')
+            sys.exit(99)
+        print('bdbmgr db2csv, csv={}, db={}'.format( args.csv, self.rdbfile ))
+        self.__db2csv(args.csv)
 
     def redis2db(self):
         parser = argparse.ArgumentParser(
@@ -78,17 +93,20 @@ The following subcommands are available:
         # prefixing the argument with -- means it's optional
         parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=self.version))
         parser.add_argument('--redis', required=None, help='redis connection string: redis://localhost:6379/0' )
-        parser.add_argument('--db', required=True )
+        parser.add_argument('--db', required=None )
         # now that we're inside a subcommand, ignore the first
         # TWO argvs, ie the command (git) and the subcommand (commit)
         args = parser.parse_args(sys.argv[2:])
-        print('bdbmgr redis2db, db={}'.format( args.db ))
-
-        self.rredis = redis.StrictRedis(host='localhost', port=6379, db=0)
+        # args.db overrides REDIREKTOR_BDB
+        if args.db:
+            self.rdbfile = args.db
+        if not self.rdbfile:
+            print('error: no db file provided; use --db or env var REDIREKTOR_BDB')
+            sys.exit(99)
         if args.redis:
-            self.rredis = redis.from_url(args.redis)
-
-        self.rdbfile = args.db
+            self.redis_url = args.redis
+        self.rredis = redis.from_url(self.redis_url)
+        print('bdbmgr redis2db, redis={} db={}'.format( self.redis_url, self.rdbfile ))
         self.__redis2db(args.db)
 
     def redis2csv(self):
@@ -99,11 +117,10 @@ The following subcommands are available:
         parser.add_argument('--redis', required=None, help='redis connection string: redis://localhost:6379/0' )
         parser.add_argument('--csv', required=True )
         args = parser.parse_args(sys.argv[2:])
-        print('bdbmgr redis2csv, csv={}'.format( args.csv ))
-        self.rredis = redis.StrictRedis(host='localhost', port=6379, db=0)
         if args.redis:
-            self.rredis = redis.from_url(args.redis)
-
+            self.redis_url = args.redis
+        self.rredis = redis.from_url(self.redis_url)
+        print('bdbmgr redis2csv, redis={} csv={}'.format( self.redis_url, args.csv ))
         self.__redis2csv(args.csv)
 
     def csv2redis(self):
@@ -117,10 +134,10 @@ The following subcommands are available:
         # TWO argvs, ie the command (git) and the subcommand (commit)
         args = parser.parse_args(sys.argv[2:])
         print('bdbmgr csv2redis, csv={}'.format( args.csv ))
-        self.rredis = redis.StrictRedis(host='localhost', port=6379, db=0)
         if args.redis:
             self.rredis = redis.from_url(args.redis)
-
+        self.rredis = redis.from_url(self.redis_url)
+        print('bdbmgr csv2redis, csv={} redis={}'.format( args.csv, self.redis_url ))
         self.__csv2redis(args.csv)
 
     def db2redis(self):
@@ -129,17 +146,20 @@ The following subcommands are available:
         # prefixing the argument with -- means it's optional
         parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=self.version))
         parser.add_argument('--redis', required=None, help='redis connection string: redis://localhost:6379/0' )
-        parser.add_argument('--db', required=True )
+        parser.add_argument('--db', required=None )
         # now that we're inside a subcommand, ignore the first
         # TWO argvs, ie the command (git) and the subcommand (commit)
         args = parser.parse_args(sys.argv[2:])
-        print('bdbmgr db2redis, db={}'.format( args.db ))
-        self.rredis = redis.StrictRedis(host='localhost', port=6379, db=0)
+        # args.db overrides REDIREKTOR_BDB
+        if args.db:
+            self.rdbfile = args.db
+        if not self.rdbfile:
+            print('error: no db file provided; use --db or env var REDIREKTOR_BDB')
+            sys.exit(99)
         if args.redis:
             self.rredis = redis.from_url(args.redis)
-
-        self.rdbfile = args.db
-        self.__db2redis(args.db)
+        print('bdbmgr db2redis, db={} redis={}'.format( self.rdbfile, self.redis_url ))
+        self.__db2redis()
 
     def poll(self):
         parser = argparse.ArgumentParser(
@@ -147,30 +167,39 @@ The following subcommands are available:
         # prefixing the argument with -- means it's optional
         parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=self.version))
         parser.add_argument('--redis', required=None, help='redis connection string: redis://localhost:6379/0' )
-        parser.add_argument('--db', required=True )
+        parser.add_argument('--db', required=None )
         # now that we're inside a subcommand, ignore the first
         # TWO argvs, ie the command (git) and the subcommand (commit)
         args = parser.parse_args(sys.argv[2:])
-        print('bdbmgr poll, db={}'.format( args.db ))
 
+        # default to localhost
         self.rredis = redis.StrictRedis(host='localhost', port=6379, db=0)
+        # args.redis overrides REDIREKTOR_REDIS
         if args.redis:
-            self.rredis = redis.from_url(args.redis)
+            self.redis_url = args.redis
+        self.rredis = redis.from_url(self.redis_url)
 
-        self.rdbfile = args.db
+        # args.db overrides REDIREKTOR_BDB
+        if args.db:
+            self.rdbfile = args.db
+        if not self.rdbfile:
+            print('error: no db file provided; use --db option or env var REDIREKTOR_BDB')
+            sys.exit(99)
+
         try:
         	self.rdb.open(self.rdbfile,None,db.DB_HASH)
         except Exception as e:
         	print('error: unable to open db: {}'.format( self.rdbfile, e ))
         	sys.exit(99)
+        print('bdbmgr poll, db={} redis={}'.format( self.rdbfile, self.redis_url ))
         self.__poll()
 
-    def __csv2db(self, dbfile, csvfile):
+    def __csv2db(self, csvfile):
 
         try:
-        	self.rdb.open(dbfile,None,db.DB_HASH, db.DB_CREATE)
+        	self.rdb.open(self.rdbfile,None,db.DB_HASH, db.DB_CREATE)
         except Exception as e:
-        	print('error: unable to open db: {}'.format( dbfile ))
+        	print('error: unable to open db: {}'.format( self.rdbfile ))
         	print(e)
         	sys.exit(99)
 
@@ -186,17 +215,15 @@ The following subcommands are available:
                     count += 1
             except Exception as e:
                 sys.exit('csv error: file {}, line {}: {}'.format(csvfile, reader.line_num, e))
-
-        self.rdb.close()
-        print('read {} records from csv to bdb: {}'.format( count, csvfile, dbfile ))
+        print('read {} records from csv to bdb: {}'.format( count, csvfile, self.rdbfile ))
 
 
-    def __db2csv(self, dbfile, csvfile):
+    def __db2csv(self, csvfile):
 
         try:
-        	self.rdb.open(dbfile,None,db.DB_HASH,db.DB_DIRTY_READ)
+        	self.rdb.open(self.rdbfile,None,db.DB_HASH,db.DB_DIRTY_READ)
         except Exception as e:
-        	print('error: unable to open db stack: {}'.format( dbfile ))
+        	print('error: unable to open db stack: {}'.format( self.rdbfile ))
         	print(e)
         	sys.exit(99)
 
@@ -211,11 +238,9 @@ The following subcommands are available:
                 print('{:s},{:s}'.format(key.decode('utf-8'), value.decode('utf-8')), file=f )
                 rec = cursor.next()
                 count += 1
+        print('read {} records from bdb to csv: {}'.format( count, self.rdbfile, csvfile ))
 
-        self.rdb.close()
-        print('read {} records from bdb to csv: {}'.format( count, dbfile, csvfile ))
-
-    def __redis2db(self, dbfile):
+    def __redis2db(self):
 
         try:
         	self.rredis.ping()
@@ -224,9 +249,9 @@ The following subcommands are available:
             sys.exit(99)
 
         try:
-        	self.rdb.open(dbfile,None,db.DB_HASH, db.DB_CREATE)
+        	self.rdb.open(self.rdbfile,None,db.DB_HASH, db.DB_CREATE)
         except Exception as e:
-        	print('error: unable to open db: {}'.format( dbfile ))
+        	print('error: unable to open db: {}'.format( self.rdbfile ))
         	print(e)
         	sys.exit(99)
 
@@ -242,12 +267,10 @@ The following subcommands are available:
                 self.rdb.put(key, value)
                 count += 1
         except Exception as e:
-        	print('error scanning redis into db: {}'.format( dbfile ))
+        	print('error scanning redis into db: {}'.format( self.rdbfile ))
         	print(e)
         	sys.exit(99)
-
-        self.rdb.close()
-        print('read {} records from redis into db: {}'.format( count, dbfile ))
+        print('read {} records from redis into db: {}'.format( count, self.rdbfile ))
 
     def __redis2csv(self, csvfile):
 
@@ -294,7 +317,7 @@ The following subcommands are available:
                 sys.exit('csv2redis error: file {}, line {}: {}'.format(csvfile, reader.line_num, e))
         print('read {} records from csv {} to redis'.format( count, csvfile ))
 
-    def __db2redis(self, dbfile):
+    def __db2redis(self):
 
         try:
         	self.rredis.ping()
@@ -303,9 +326,9 @@ The following subcommands are available:
             sys.exit(99)
 
         try:
-        	self.rdb.open(dbfile,None,db.DB_HASH,db.DB_DIRTY_READ)
+        	self.rdb.open(self.rdbfile,None,db.DB_HASH,db.DB_DIRTY_READ)
         except Exception as e:
-        	print('error: unable to open db stack: {}'.format( dbfile ))
+        	print('error: unable to open db stack: {}'.format( self.rdbfile ))
         	print(e)
         	sys.exit(99)
 
@@ -323,10 +346,8 @@ The following subcommands are available:
                     count += 1
                 pipe.execute()
         except Exception as e:
-                sys.exit('db2redis error: db {}, counter {}: {}'.format(dbfile, count, e))
-
-        self.rdb.close()
-        print('read {} records from bdb {} to redis'.format( count, dbfile ))
+                sys.exit('db2redis error: db {}, counter {}: {}'.format(self.rdbfile, count, e))
+        print('read {} records from bdb {} to redis'.format( count, self.rdbfile ))
 
 
     def __process_set(self, item):
