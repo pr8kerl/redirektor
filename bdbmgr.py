@@ -2,8 +2,9 @@
 
 from bsddb3 import db
 from urllib.parse import urlparse
+from time import sleep
 
-import argparse, sys, csv, redis
+import argparse, sys, csv, redis, datetime
 
 
 class BDBMgr(object):
@@ -39,6 +40,11 @@ The following subcommands are available:
         self.rdb = db.DB()
         # use dispatch pattern to invoke method with same name
         getattr(self, args.subcommand)()
+
+    def __del__(self):
+        if self.rdb:
+            self.rdb.sync()
+            self.rdb.close()
 
     def csv2db(self):
         parser = argparse.ArgumentParser(
@@ -152,7 +158,12 @@ The following subcommands are available:
             self.rredis = redis.from_url(args.redis)
 
         self.rdbfile = args.db
-        self.__poll(args.db)
+        try:
+        	self.rdb.open(self.rdbfile,None,db.DB_HASH)
+        except Exception as e:
+        	print('error: unable to open db: {}'.format( self.rdbfile, e ))
+        	sys.exit(99)
+        self.__poll()
 
     def __csv2db(self, dbfile, csvfile):
 
@@ -207,6 +218,12 @@ The following subcommands are available:
     def __redis2db(self, dbfile):
 
         try:
+        	self.rredis.ping()
+        except Exception as e:
+            print('{:%Y-%b-%d %H:%M:%S} redis2db error: unable to ping redis: {}'.format( datetime.datetime.now(), e ))
+            sys.exit(99)
+
+        try:
         	self.rdb.open(dbfile,None,db.DB_HASH, db.DB_CREATE)
         except Exception as e:
         	print('error: unable to open db: {}'.format( dbfile ))
@@ -234,6 +251,12 @@ The following subcommands are available:
 
     def __redis2csv(self, csvfile):
 
+        try:
+        	self.rredis.ping()
+        except Exception as e:
+            print('{:%Y-%b-%d %H:%M:%S} redis2csv error: unable to ping redis: {}'.format( datetime.datetime.now(), e ))
+            sys.exit(99)
+
         count = 0
 	# pull all redis entries
         try:
@@ -252,6 +275,12 @@ The following subcommands are available:
 
     def __csv2redis(self, csvfile):
 
+        try:
+        	self.rredis.ping()
+        except Exception as e:
+            print('{:%Y-%b-%d %H:%M:%S} csv2redis error: unable to ping redis: {}'.format( datetime.datetime.now(), e ))
+            sys.exit(99)
+
         count = 0
         with open(csvfile, newline='') as f:
             reader = csv.reader(f)
@@ -266,6 +295,12 @@ The following subcommands are available:
         print('read {} records from csv {} to redis'.format( count, csvfile ))
 
     def __db2redis(self, dbfile):
+
+        try:
+        	self.rredis.ping()
+        except Exception as e:
+            print('{:%Y-%b-%d %H:%M:%S} db2redis error: unable to ping redis: {}'.format( datetime.datetime.now(), e ))
+            sys.exit(99)
 
         try:
         	self.rdb.open(dbfile,None,db.DB_HASH,db.DB_DIRTY_READ)
@@ -294,6 +329,69 @@ The following subcommands are available:
         print('read {} records from bdb {} to redis'.format( count, dbfile ))
 
 
+    def __process_set(self, item):
+        #print('set event received full: {}'.format( item ) )
+        # lookup redis key/value
+        # set dbm key/value
+        key = item['data']
+        value = self.rredis.get(key)
+        #print('{:s},{:s}'.format(key.decode('utf-8'), value.decode('utf-8')) )
+        rc = self.rdb.put(key, value)
+        if rc:
+            print('{:%Y-%b-%d %H:%M:%S} db put error: {}'.format( datetime.datetime.now(), rc ))
+        rc = self.rdb.sync()
+        print('{:%Y-%b-%d %H:%M:%S} set event received: {} {}'.format( datetime.datetime.now(), item['channel'], item['data'] ) )
+
+    def __process_expired(self, item):
+        # delete dbm key
+        key = item['data']
+        rc = self.rdb.delete(key)
+        self.rdb.sync()
+        print('{:%Y-%b-%d %H:%M:%S} expired event received: {} {}'.format( datetime.datetime.now(), item['channel'], item['data'] ) )
+
+    def __process_default(self, item):
+        print('{:%Y-%b-%d %H:%M:%S} default event received: {} {}'.format( datetime.datetime.now(), item['channel'], item['data'] ) )
+    
+    def __poller(self):
+
+        try:
+            for item in self.pubsub.listen():
+                if item['data'] == "KILL":
+                    self.pubsub.unsubscribe()
+                    print("unsubscribed and finished, outta here.")
+                    break
+
+                if item['type'] == "pmessage":
+                    if item['channel'].decode().endswith(":set"):
+                        self.__process_set(item)
+                    elif item['channel'].decode().endswith(":expired"):
+                        self.__process_expired(item)
+                    else:
+                        self.__process_default(item)
+                else:
+                    self.__process_default(item)
+        except Exception as e:
+                print('{:%Y-%b-%d %H:%M:%S} poller error caught: {}'.format( datetime.datetime.now(), e ))
+                # try again in a while so that supervisord won't be restarting again and adain
+                self.rdb.sync()
+                sleep(120)
+                self.__poll()
+
+    def __poll(self):
+        try:
+        	self.rredis.ping()
+        except Exception as e:
+            print('{:%Y-%b-%d %H:%M:%S} error: unable to ping redis: {}'.format( datetime.datetime.now(), e ))
+            sys.exit(99)
+
+        self.pubsub = self.rredis.pubsub()
+        self.pubsub.psubscribe(['__keyevent*__:set','__keyevent*__:expired'])
+        self.__poller()
+
+
 if __name__ == '__main__':
-    BDBMgr()
+    try:
+    	BDBMgr()
+    except KeyboardInterrupt:
+        sys.exit(0)
 
