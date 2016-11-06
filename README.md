@@ -4,7 +4,7 @@
 
 Apache RewriteMap management - work in progress
 
-Looks like python is best to manage berkeleydb files.
+Looks like python is best to manage berkeleydb files. Tried golang, wanted golang but no bindings for older berkleydb versions - I tried em all. :)
 
 * download and install [BerkeleyDB 4.7](http://download.oracle.com/berkeley-db/db-4.7.25.tar.gz) (same version as used by Apache HTTPD in Amazon Linux)
 * build it
@@ -19,42 +19,51 @@ export BERKELEYDB_DIR=/usr/local/BerkeleyDB.4.7
 pip3 install bsddb3
 ```
 
+## bdbmgr
 
-And another apache rewritemap program using Redis.
+A command line utility to manage berkeley db files for use by Apache RewriteMaps.
 
-Probably better to use Redis...
-* use slave redis instance locally on each web server
-* use central management redis server
-* set max memory and LRU on local redis slave
-* can expire keys
-
-And a v basic csv importer too...
-incoming_url,outgoing_url
+The following subcommands are available:
 
 ```
-$ csvimporter --help
-usage: csvimporter [--version] [--help] <command> [<args>]
+$ ./bdbmgr.py 
+usage: bdbmgr.py <command> [<args>]
 
-Available commands are:
-    bolt     import csv to a BoltDB file
-    redis    import csv to a RedisDB
-
-$ csvimporter redis --help
-csvimporter redis: import csv data to a Redis DB
-
-		--database <string>	the redis DB connection string - default is localhost:6379
-		--prefix <value>	the key prefix to use for import data
-		--csv <filename>	the csv filename to import data from
-		--db <int>	the redis DB number to use - defaults to 0
-
-
-$ csvimporter bolt --help
-csvimporter bolt: import csv data to a BoltDB file
-
-		--database <filename>	the BoltDB filename to use
-		--bucket <value>	the BoltDB bucket to import data into
-		--csv <filename>	the csv filename to import data from
+The following subcommands are available:
+   csv2db     import from csv to bdb
+   db2csv     export from bdb to csv
+   redis2db   import from redis to bdb
+   redis2csv  export from redis to csv
+   csv2redis  import from csv to redis
+   db2redis   import from bdb to redis
+   poll       subscribe to redis and update bdb with changes
+bdbmgr: error: the following arguments are required: subcommand
 ```
+
+Use the **poll** command to subscribe to a redis DB and update the local RewriteMap db file with changes.
+Use supervisord to start and monitor the polling process.
+
+
+
+
+
+
+## Notes to self
+
+* enable redis event notifications
+
+```
+$ grep AKE /etc/redis/redis.conf
+#  A     Alias for g$lshzxe, so that the "AKE" string means all the events.
+notify-keyspace-events "AKE"
+```
+
+* or enable redis key events via cli
+
+```
+redis-cli config set notify-keyspace-events KEA
+```
+
 
 * delete all keys in one hit
 ```
