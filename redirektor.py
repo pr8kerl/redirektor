@@ -363,12 +363,12 @@ The following subcommands are available:
         rc = self.rdb.sync()
         print('{:%Y-%b-%d %H:%M:%S} set event received: {} {}'.format( datetime.datetime.now(), item['channel'], item['data'] ) )
 
-    def __process_expired(self, item):
+    def __process_del(self, item):
         # delete dbm key
         key = item['data']
         rc = self.rdb.delete(key)
         self.rdb.sync()
-        print('{:%Y-%b-%d %H:%M:%S} expired event received: {} {}'.format( datetime.datetime.now(), item['channel'], item['data'] ) )
+        print('{:%Y-%b-%d %H:%M:%S} delete event received: {} {}'.format( datetime.datetime.now(), item['channel'], item['data'] ) )
 
     def __process_default(self, item):
         print('{:%Y-%b-%d %H:%M:%S} default event received: {} {}'.format( datetime.datetime.now(), item['channel'], item['data'] ) )
@@ -385,8 +385,10 @@ The following subcommands are available:
                 if item['type'] == "pmessage":
                     if item['channel'].decode().endswith(":set"):
                         self.__process_set(item)
+                    if item['channel'].decode().endswith(":del"):
+                        self.__process_del(item)
                     elif item['channel'].decode().endswith(":expired"):
-                        self.__process_expired(item)
+                        self.__process_del(item)
                     else:
                         self.__process_default(item)
                 else:
@@ -399,7 +401,7 @@ The following subcommands are available:
                 self.__poll()
 
     def __poll(self):
-        print('{:%Y-%b-%d %H:%M:%S} redirektor poll start')
+        print('{:%Y-%b-%d %H:%M:%S} redirektor poll start'.format( datetime.datetime.now() ))
         try:
         	self.rredis.ping()
         except Exception as e:
@@ -407,7 +409,7 @@ The following subcommands are available:
             sys.exit(99)
 
         self.pubsub = self.rredis.pubsub()
-        self.pubsub.psubscribe(['__keyevent*__:set','__keyevent*__:expired'])
+        self.pubsub.psubscribe(['__keyevent*__:set','__keyevent*__:del','__keyevent*__:expired'])
         self.__poller()
 
 
