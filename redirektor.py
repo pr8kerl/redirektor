@@ -16,9 +16,9 @@ class BDBMgr(object):
 
     def __init__(self):
         parser = argparse.ArgumentParser(
-            prog='bdbmgr',
+            prog='redirektor',
             description='manage berkeley db files',
-            usage='''bdbmgr.py <command> [<args>]
+            usage='''redirektor.py <command> [<args>]
 
 The following subcommands are available:
    csv2db     import from csv to bdb
@@ -67,7 +67,7 @@ The following subcommands are available:
         if not self.rdbfile:
             print('error: no db file provided; use --db or env var REDIREKTOR_BDB')
             sys.exit(99)
-        print('bdbmgr csv2db, csv={}, db={}'.format( args.csv, self.rdbfile ))
+        print('redirektor csv2db, csv={}, db={}'.format( args.csv, self.rdbfile ))
         self.__csv2db(args.csv)
 
     def db2csv(self):
@@ -84,7 +84,7 @@ The following subcommands are available:
         if not self.rdbfile:
             print('error: no db file provided; use --db or env var REDIREKTOR_BDB')
             sys.exit(99)
-        print('bdbmgr db2csv, csv={}, db={}'.format( args.csv, self.rdbfile ))
+        print('redirektor db2csv, csv={}, db={}'.format( args.csv, self.rdbfile ))
         self.__db2csv(args.csv)
 
     def redis2db(self):
@@ -106,7 +106,7 @@ The following subcommands are available:
         if args.redis:
             self.redis_url = args.redis
         self.rredis = redis.from_url(self.redis_url)
-        print('bdbmgr redis2db, redis={} db={}'.format( self.redis_url, self.rdbfile ))
+        print('redirektor redis2db, redis={} db={}'.format( self.redis_url, self.rdbfile ))
         self.__redis2db(args.db)
 
     def redis2csv(self):
@@ -120,7 +120,7 @@ The following subcommands are available:
         if args.redis:
             self.redis_url = args.redis
         self.rredis = redis.from_url(self.redis_url)
-        print('bdbmgr redis2csv, redis={} csv={}'.format( self.redis_url, args.csv ))
+        print('redirektor redis2csv, redis={} csv={}'.format( self.redis_url, args.csv ))
         self.__redis2csv(args.csv)
 
     def csv2redis(self):
@@ -133,11 +133,11 @@ The following subcommands are available:
         # now that we're inside a subcommand, ignore the first
         # TWO argvs, ie the command (git) and the subcommand (commit)
         args = parser.parse_args(sys.argv[2:])
-        print('bdbmgr csv2redis, csv={}'.format( args.csv ))
+        print('redirektor csv2redis, csv={}'.format( args.csv ))
         if args.redis:
             self.rredis = redis.from_url(args.redis)
         self.rredis = redis.from_url(self.redis_url)
-        print('bdbmgr csv2redis, csv={} redis={}'.format( args.csv, self.redis_url ))
+        print('redirektor csv2redis, csv={} redis={}'.format( args.csv, self.redis_url ))
         self.__csv2redis(args.csv)
 
     def db2redis(self):
@@ -158,7 +158,7 @@ The following subcommands are available:
             sys.exit(99)
         if args.redis:
             self.rredis = redis.from_url(args.redis)
-        print('bdbmgr db2redis, db={} redis={}'.format( self.rdbfile, self.redis_url ))
+        print('redirektor db2redis, db={} redis={}'.format( self.rdbfile, self.redis_url ))
         self.__db2redis()
 
     def poll(self):
@@ -191,7 +191,7 @@ The following subcommands are available:
         except Exception as e:
         	print('error: unable to open db: {}'.format( self.rdbfile, e ))
         	sys.exit(99)
-        print('bdbmgr poll, db={} redis={}'.format( self.rdbfile, self.redis_url ))
+        print('redirektor poll, db={} redis={}'.format( self.rdbfile, self.redis_url ))
         self.__poll()
 
     def __csv2db(self, csvfile):
@@ -399,6 +399,7 @@ The following subcommands are available:
                 self.__poll()
 
     def __poll(self):
+        print('{:%Y-%b-%d %H:%M:%S} redirektor poll start')
         try:
         	self.rredis.ping()
         except Exception as e:
