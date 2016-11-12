@@ -207,11 +207,12 @@ The following subcommands are available:
         rec = cursor.first()
         count = 0
 
-        with open(csvfile, newline='') as f:
+        with open(csvfile, encoding="latin-1") as f:
             reader = csv.reader(f)
             try:
                 for row in reader:
                     self.rdb.put(str.encode(row[0]), str.encode(row[1]))
+                    print('csv: {}'.format(row))
                     count += 1
             except Exception as e:
                 sys.exit('csv error: file {}, line {}: {}'.format(csvfile, reader.line_num, e))
@@ -305,7 +306,7 @@ The following subcommands are available:
             sys.exit(99)
 
         count = 0
-        with open(csvfile, newline='') as f:
+        with open(csvfile, encoding="latin-1") as f:
             reader = csv.reader(f)
             try:
                 with self.rredis.pipeline() as pipe:
