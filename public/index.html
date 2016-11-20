@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0"/>
+  <title>F5 Switcher</title>
+
+  <!-- CSS  -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="css/materialize.min.css" type="text/css" rel="stylesheet" media="screen,projection"/>
+  <link href="css/style.css" type="text/css" rel="stylesheet" media="screen,projection"/>
+</head>
+
+<body>
+  <div id="app">
+  <nav class="grey darken-2" role="navigation">
+					<div class="nav-wrapper container"><a id="logo-container" href="#" class="brand-logo">
+						<i class="material-icons">autorenew</i></a>
+      <ul id="willkommen" class="right">
+        <li>welcome {{ response.user }}</li>
+      </ul>
+									<!--
+      <ul class="right hide-on-med-and-down">
+        <li><a href="#">Navbar Link</a></li>
+      </ul>
+
+      <ul id="nav-mobile" class="side-nav">
+        <li><a href="#">Navbar Link</a></li>
+      </ul>
+      <a href="#" data-activates="nav-mobile" class="button-collapse"><i class="material-icons">menu</i></a>
+-->
+    </div>
+  </nav>
+
+  <div class="section no-pad-bot" id="index-banner">
+    <div class="container">
+      <br><br>
+      <h1 class="header center orange-text">flick the switch!</h1>
+			  <!--[if lt IE 8]>
+			<div class="row center pink-text"><h2>You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</h2></div>
+        <![endif]-->
+			<div class="row center">
+							<h5 class="header col s12 light">pick a stack to switch</h5>
+      </div>
+
+
+			<div class="section">
+
+
+			  <template v-if="response.data">
+        <div class="row center col s12">
+
+				<table>
+        <thead>
+          <tr>
+              <th data-field="stack">Stack Name</th>
+              <th data-field="edit"></th>
+          </tr>
+        </thead>
+
+        <tbody v-for="(gkey, group) in response.data" track-by="$index">
+          <tr v-bind:class="response.data[gkey].state" class="darken-2 white-text">
+									<td>{{ gkey }}</td>
+									<td v-bind:class="response.data[gkey].state" class="right lighten-3"><a class="btn-flat waves-effect waves-light modal-trigger tooltipped" href="#{{ gkey }}" data-position="left" data-delay="50" data-tooltip="switch stack {{ gkey }}" onClick="$('#{{ gkey }}').openModal();"><i class="material-icons">autorenew</i></a></td>
+          </tr>
+				</tbody>
+
+				</table>
+
+				</template>
+				<template v-else>
+        <div class="row center">
+				<div class="preloader-wrapper big active">
+          <div class="spinner-layer spinner-blue-only">
+          <div class="circle-clipper left">
+          <div class="circle"></div>
+          </div><div class="gap-patch">
+          <div class="circle"></div>
+          </div><div class="circle-clipper right">
+          <div class="circle"></div>
+          </div>
+          </div>
+        </div>
+        </div>
+				</template>
+
+        <div class="row" v-for="(mkey, mgroup) in response.data">
+
+								<!-- Modal {{ mkey }} Structure -->
+								<div id="{{ mkey }}" class="container modal modal-fixed-footer">
+                <div class="modal-content">
+												<h4>Switch {{ mkey }}!</h4>
+												<div v-pooler="mkey">
+												</div>
+                </div>
+                <div class="modal-footer">
+                <a href="#!" class="modal-action modal-close waves-effect waves-green btn orange">Cancel</a>
+                <a href="#!" class="modal-action modal-close waves-effect waves-green btn blue left" v-on:click='updateGroup(mkey,"blue")'>Blue</a>
+                <a href="#!" class="modal-action modal-close waves-effect waves-green btn green left" v-on:click='updateGroup(mkey,"green")'>Green</a>
+                </div>
+                </div>
+        </div>
+
+
+     </div>
+
+
+    </div>
+  </div>
+
+
+  </div>
+  </div>
+
+  <footer class="page-footer pink">
+
+    <div class="container">
+      <div class="row">
+        <div class="col l6 s12">
+        </div>
+					<!--
+          <h5 class="white-text">Company Bio</h5>
+          <p class="grey-text text-lighten-4">We are a team of college students working on this project like it's our full time job. Any amount would help support and continue development on this project and is greatly appreciated.</p>
+
+
+        <div class="col l3 s12">
+          <h5 class="white-text">Settings</h5>
+          <ul>
+            <li><a class="white-text" href="#!">Link 1</a></li>
+            <li><a class="white-text" href="#!">Link 2</a></li>
+            <li><a class="white-text" href="#!">Link 3</a></li>
+            <li><a class="white-text" href="#!">Link 4</a></li>
+          </ul>
+        </div>
+        <div class="col l3 s12">
+          <h5 class="white-text">Connect</h5>
+          <ul>
+            <li><a class="white-text" href="#!">Link 1</a></li>
+            <li><a class="white-text" href="#!">Link 2</a></li>
+            <li><a class="white-text" href="#!">Link 3</a></li>
+            <li><a class="white-text" href="#!">Link 4</a></li>
+          </ul>
+        </div>
+       -->
+      </div>
+    </div>
+
+    <div class="footer-copyright">
+      <div class="container">
+							Made with 
+							<a class="orange-text text-lighten-3" href="https://gin-gonic.github.io/gin/">Gin</a>,
+							<a class="orange-text text-lighten-3" href="http://vuejs.org/">Vuejs</a> and
+							<a class="orange-text text-lighten-3" href="http://materializecss.com">Materialize</a>,.
+      </div>
+    </div>
+  </footer>
+
+
+  <!--  Scripts-->
+	<script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+	<script src="js/materialize.min.js"></script>
+	<script src="js/vue.min.js"></script>
+	<script src="js/vue-resource.min.js"></script>
+	<script src="js/init.js"></script>
+
+  </body>
+</html>
