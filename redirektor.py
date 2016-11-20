@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3.4
 
 from bsddb3 import db
 from urllib.parse import urlparse
@@ -38,7 +38,6 @@ The following subcommands are available:
             print('unrecognized subcommand')
             parser.print_help()
             exit(1)
-        self.rdb = db.DB()
         if 'REDIREKTOR_BDB' in os.environ:
             self.rdbfile = os.getenv['REDIREKTOR_BDB']
         if 'REDIREKTOR_REDIS' in os.environ:
@@ -61,6 +60,7 @@ The following subcommands are available:
         # now that we're inside a subcommand, ignore the first
         # TWO argvs, ie the command (git) and the subcommand (commit)
         args = parser.parse_args(sys.argv[2:])
+        self.rdb = db.DB()
         # args.db overrides REDIREKTOR_BDB
         if args.db:
             self.rdbfile = args.db
@@ -78,6 +78,7 @@ The following subcommands are available:
         parser.add_argument('--csv', required=True )
         parser.add_argument('--db', required=False )
         args = parser.parse_args(sys.argv[2:])
+        self.rdb = db.DB()
         # args.db overrides REDIREKTOR_BDB
         if args.db:
             self.rdbfile = args.db
@@ -97,6 +98,7 @@ The following subcommands are available:
         # now that we're inside a subcommand, ignore the first
         # TWO argvs, ie the command (git) and the subcommand (commit)
         args = parser.parse_args(sys.argv[2:])
+        self.rdb = db.DB()
         # args.db overrides REDIREKTOR_BDB
         if args.db:
             self.rdbfile = args.db
@@ -107,7 +109,7 @@ The following subcommands are available:
             self.redis_url = args.redis
         self.rredis = redis.from_url(self.redis_url)
         print('redirektor redis2db, redis={} db={}'.format( self.redis_url, self.rdbfile ))
-        self.__redis2db(args.db)
+        self.__redis2db()
 
     def redis2csv(self):
         parser = argparse.ArgumentParser(
@@ -133,9 +135,8 @@ The following subcommands are available:
         # now that we're inside a subcommand, ignore the first
         # TWO argvs, ie the command (git) and the subcommand (commit)
         args = parser.parse_args(sys.argv[2:])
-        print('redirektor csv2redis, csv={}'.format( args.csv ))
         if args.redis:
-            self.rredis = redis.from_url(args.redis)
+            self.redis_url = args.redis
         self.rredis = redis.from_url(self.redis_url)
         print('redirektor csv2redis, csv={} redis={}'.format( args.csv, self.redis_url ))
         self.__csv2redis(args.csv)
@@ -150,6 +151,7 @@ The following subcommands are available:
         # now that we're inside a subcommand, ignore the first
         # TWO argvs, ie the command (git) and the subcommand (commit)
         args = parser.parse_args(sys.argv[2:])
+        self.rdb = db.DB()
         # args.db overrides REDIREKTOR_BDB
         if args.db:
             self.rdbfile = args.db
@@ -157,7 +159,8 @@ The following subcommands are available:
             print('error: no db file provided; use --db or env var REDIREKTOR_BDB')
             sys.exit(99)
         if args.redis:
-            self.rredis = redis.from_url(args.redis)
+            self.redis_url = args.redis
+        self.rredis = redis.from_url(self.redis_url)
         print('redirektor db2redis, db={} redis={}'.format( self.rdbfile, self.redis_url ))
         self.__db2redis()
 
@@ -174,6 +177,7 @@ The following subcommands are available:
 
         # default to localhost
         self.rredis = redis.StrictRedis(host='localhost', port=6379, db=0)
+        self.rdb = db.DB()
         # args.redis overrides REDIREKTOR_REDIS
         if args.redis:
             self.redis_url = args.redis
@@ -212,7 +216,7 @@ The following subcommands are available:
             try:
                 for row in reader:
                     self.rdb.put(str.encode(row[0]), str.encode(row[1]))
-                    print('csv: {}'.format(row))
+                    #print('csv: {}'.format(row))
                     count += 1
             except Exception as e:
                 sys.exit('csv error: file {}, line {}: {}'.format(csvfile, reader.line_num, e))
