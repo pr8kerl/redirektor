@@ -6,7 +6,7 @@ DEPS   := github.com/gin-gonic/gin gopkg.in/redis.v5
 
 all: redirektor
 
-update: $(DEPS)
+deps: $(DEPS)
 	GOPATH=$(GOPATH) go get -u $^
 
 redirektor: main.go config.go redirektor.go

@@ -75,6 +75,7 @@ func (r *Redirektor) GetDBs(c *gin.Context) {
 	c.JSON(http.StatusOK, r.DatabaseNames)
 }
 func (r *Redirektor) GetAll(c *gin.Context) {
+
 	var response []RedirektRequestResponse
 	for i := range r.DatabaseNames {
 		dbname := r.DatabaseNames[i]
@@ -107,12 +108,26 @@ func (r *Redirektor) GetAll(c *gin.Context) {
 			n += len(keys)
 			for x := range keys {
 				//HERE
+				outurl, err := pipe.Get(x).Result()
+				if err != nil {
+  				c.JSON(http.StatusInternalServerError, gin.H{"db getall error": err})
+				}
+				s := strings.Split(x, ":")
+				    label, inurl := s[0], s[1]
+				row := RedirektRequestResponse{
+				  Label: label,
+					InUrl: inurl,
+					OutUrl: outurl,
+				}
+				response.append(row)
+				fmt.Printf("response: %s:%s %s\n", label, inurl, outurl)
 
 			}
 			if cursor == 0 {
 				break
 			}
 		}
+  	c.JSON(http.StatusOk, gin.H{"response": response})
 	}
 }
 
