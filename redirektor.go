@@ -11,14 +11,15 @@ import (
 )
 
 type Redirekt struct {
-	Key    string
-	Label  string
+	Prefix string
+	Db     string
 	InUrl  url.URL
 	OutUrl url.URL
 }
 
 type RedirektRequestResponse struct {
-	Label  string `json:"label"`
+	Db     string `json:"db"`
+	Prefix string `json:"prefix"`
 	InUrl  string `json:"incoming"`
 	OutUrl string `json:"outcoming"`
 }
@@ -27,10 +28,6 @@ type DbsResponse struct {
 }
 type DbResponse struct {
 	Name string `json:"name"`
-}
-
-type Labeller struct {
-	Keys map[string]string
 }
 
 type RedirektService interface {
@@ -46,17 +43,15 @@ type Redirektor struct {
 	Now func() time.Time
 
 	// db options
-	dbs           map[string]redis.Client
-	DatabaseNames []string
-	config        *Config
+	Dbs    map[string]redis.Client
+	config *Config
 }
 
 func NewRedirektor(c *Config) (*Redirektor, error) {
 
 	r := Redirektor{config: c}
 	i := len(c.Db)
-	r.dbs = make(map[string]redis.Client, i)
-	r.DatabaseNames = make([]string, i)
+	r.Dbs = make(map[string]redis.Client, i)
 	for key, dbprofile := range c.Db {
 		fmt.Println("creating db connection for profile:", key)
 		client := redis.NewClient(&redis.Options{
@@ -65,27 +60,30 @@ func NewRedirektor(c *Config) (*Redirektor, error) {
 			DB:       dbprofile.DbID,
 			//              ReadOnly: true,
 		})
-		r.dbs[key] = *client
-		i--
-		r.DatabaseNames[i] = key
+		r.Dbs[key] = *client
 	}
 	return &r, nil
 
 }
 func (r *Redirektor) NumDBs() int {
-	sz := len(r.dbs)
+	sz := len(r.Dbs)
 	return sz
 }
 func (r *Redirektor) GetDBs(c *gin.Context) {
-	c.JSON(http.StatusOK, r.DatabaseNames)
+	sz := len(r.Dbs)
+	resp := make([]string, sz)
+	for key, _ := range r.Dbs {
+		sz--
+		resp[sz] = key
+	}
+	c.JSON(http.StatusOK, resp)
 	return
 }
 func (r *Redirektor) GetAll(c *gin.Context) {
 
 	var response []RedirektRequestResponse
-	for i := range r.DatabaseNames {
-		dbname := r.DatabaseNames[i]
-		dbclient := r.dbs[dbname]
+	for dbname, dbclient := range r.Dbs {
+
 		sz, err := dbclient.DbSize().Result()
 		if err != nil {
 			fmt.Printf("db size err: %s\n", err)
@@ -93,7 +91,7 @@ func (r *Redirektor) GetAll(c *gin.Context) {
 			return
 		}
 		if len(response) == 0 {
-			response = make([]RedirektRequestResponse, sz, sz)
+			response = make([]RedirektRequestResponse, 0, sz)
 		} else {
 			// make response fit the new records
 			t := make([]RedirektRequestResponse, len(response), (int64(cap(response)) + sz))
@@ -119,24 +117,35 @@ func (r *Redirektor) GetAll(c *gin.Context) {
 					c.JSON(http.StatusInternalServerError, gin.H{"db getall error": err})
 					return
 				}
-				s := strings.Split(k, ":")
-				label, inurl := s[0], s[1]
+				s := strings.SplitN(k, ":", 2)
+				var prefix, inurl string
+				switch n := len(s); n {
+				case 2:
+					prefix, inurl = s[0], s[1]
+				case 1:
+					prefix = ""
+					inurl = s[0]
+				default:
+					fmt.Printf("unexpected record length: %q\n", s)
+					continue
+				}
 				row := RedirektRequestResponse{
-					Label:  label,
+					Db:     dbname,
+					Prefix: prefix,
 					InUrl:  inurl,
 					OutUrl: outurl,
 				}
 				response = append(response, row)
-				fmt.Printf("response: %s:%s %s\n", label, inurl, outurl)
+				//				fmt.Printf("response: %s:%s %s\n", dbname, prefix, inurl, outurl)
 
 			}
 			if cursor == 0 {
 				break
 			}
 		}
-		c.JSON(http.StatusOK, gin.H{"response": response})
-		return
 	}
+	c.JSON(http.StatusOK, gin.H{"response": response})
+	return
 }
 
 func (r *Redirektor) Get(c *gin.Context) {
