@@ -2,8 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/pr8kerl/redirektor"
-	"gopkg.in/gin-gonic/gin.v1"
+	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
 	"os"
@@ -16,26 +15,30 @@ var (
 	currentUserFirstName string = "luser"
 	basename             string
 	cfgfile              string
+	cfg                  Config
 )
 
 func init() {
 
 	basename = filepath.Base(os.Args[0])
-	cfgfile = filepath.Abs(os.Args[0]) + ".ini"
+	cfgfile, err := filepath.Abs(os.Args[0])
+	if err != nil {
+		fmt.Printf("error determing current dir: %s\n", err)
+		os.Exit(1)
+	}
+	cfgfile += ".ini"
 
 	// setup config
-	var cfg = Config{}
-	err := cfg.LoadFromFile(cfgfile)
+	err = cfg.LoadFromFile(cfgfile)
 	if err != nil {
 		fmt.Printf("error reading config: %s\n", err)
 		os.Exit(1)
 	}
-	bindaddress = fmt.Sprintf("%s:%d", cfg.Server.BindAddr, cfg.Server.BindPort)
 }
 
 func main() {
 
-	r, err := redirektor.NewRedirektor(cfg)
+	r, err := NewRedirektor(&cfg)
 	if err != nil {
 		fmt.Printf("error initialising redirektor: %s\n", err)
 		os.Exit(1)
@@ -45,13 +48,13 @@ func main() {
 	//gin.SetMode(gin.ReleaseMode)
 	s := gin.New()
 	// Global middlewares
-	s.Use(MyLogger(gin.DefaultWriter))
+	//s.Use(MyLogger(gin.DefaultWriter))
 	s.Use(gin.Recovery())
 	s.Use(SetJellyBeans())
 	//r.Use(GetUser)
 
 	//r.GET("/", index)
-	s.StaticFS(appRoot, http.Dir(cfg.Server.HtmlPath))
+	s.StaticFS(cfg.Server.HtmlPath, http.Dir(cfg.Server.HtmlPath))
 
 	api := s.Group("/api")
 	{
@@ -61,6 +64,7 @@ func main() {
 		api.PUT("/redirekts/:dbname", r.Set)
 	}
 
+	bindaddress := fmt.Sprintf("%s:%d", cfg.Server.BindAddr, cfg.Server.BindPort)
 	s.Run(bindaddress)
 
 }

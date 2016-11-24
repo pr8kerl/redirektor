@@ -1,8 +1,13 @@
-package redirektor
+package main
 
 import (
+	"fmt"
+	"github.com/gin-gonic/gin"
 	"gopkg.in/redis.v5"
+	"net/http"
 	"net/url"
+	"strings"
+	"time"
 )
 
 type Redirekt struct {
@@ -60,9 +65,9 @@ func NewRedirektor(c *Config) (*Redirektor, error) {
 			DB:       dbprofile.DbID,
 			//              ReadOnly: true,
 		})
-		r.dbs[key] = client
+		r.dbs[key] = *client
 		i--
-		DatabaseNames[i] = key
+		r.DatabaseNames[i] = key
 	}
 	return &r, nil
 
@@ -73,6 +78,7 @@ func (r *Redirektor) NumDBs() int {
 }
 func (r *Redirektor) GetDBs(c *gin.Context) {
 	c.JSON(http.StatusOK, r.DatabaseNames)
+	return
 }
 func (r *Redirektor) GetAll(c *gin.Context) {
 
@@ -82,44 +88,45 @@ func (r *Redirektor) GetAll(c *gin.Context) {
 		dbclient := r.dbs[dbname]
 		sz, err := dbclient.DbSize().Result()
 		if err != nil {
+			fmt.Printf("db size err: %s\n", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"db size error": err})
+			return
 		}
 		if len(response) == 0 {
 			response = make([]RedirektRequestResponse, sz, sz)
 		} else {
 			// make response fit the new records
-			response = copy([]RedirektRequestResponse, sz)
-			t := make([]byte, len(response), (cap(response) + sz))
+			t := make([]RedirektRequestResponse, len(response), (int64(cap(response)) + sz))
 			copy(t, response)
 			response = t
 		}
 
-		pipe := dbclient.Pipeline()
-		defer pipe.Close()
 		var cursor uint64
-		var n int
 		for {
-			var keys []string
+			var rkeys []string
 			var err error
-			keys, cursor, err = pipe.Scan(cursor, "", 10).Result()
+			rkeys, cursor, err = dbclient.Scan(cursor, "", 100).Result()
 			if err != nil {
+				fmt.Printf("db scan err: %s\n", err)
 				c.JSON(http.StatusInternalServerError, gin.H{"db scan error": err})
+				return
 			}
-			n += len(keys)
-			for x := range keys {
+			for x := range rkeys {
 				//HERE
-				outurl, err := pipe.Get(x).Result()
+				k := rkeys[x]
+				outurl, err := dbclient.Get(k).Result()
 				if err != nil {
-  				c.JSON(http.StatusInternalServerError, gin.H{"db getall error": err})
+					c.JSON(http.StatusInternalServerError, gin.H{"db getall error": err})
+					return
 				}
-				s := strings.Split(x, ":")
-				    label, inurl := s[0], s[1]
+				s := strings.Split(k, ":")
+				label, inurl := s[0], s[1]
 				row := RedirektRequestResponse{
-				  Label: label,
-					InUrl: inurl,
+					Label:  label,
+					InUrl:  inurl,
 					OutUrl: outurl,
 				}
-				response.append(row)
+				response = append(response, row)
 				fmt.Printf("response: %s:%s %s\n", label, inurl, outurl)
 
 			}
@@ -127,7 +134,8 @@ func (r *Redirektor) GetAll(c *gin.Context) {
 				break
 			}
 		}
-  	c.JSON(http.StatusOk, gin.H{"response": response})
+		c.JSON(http.StatusOK, gin.H{"response": response})
+		return
 	}
 }
 

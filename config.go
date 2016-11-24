@@ -1,4 +1,4 @@
-package redirektor
+package main
 
 import (
 	"gopkg.in/gcfg.v1"
@@ -6,11 +6,12 @@ import (
 
 type Config struct {
 	Server ServerSection
-	Db     map[string]*DBSection
+	Db     map[string]*DbSection
 }
 
 type ServerSection struct {
 	BindAddr string
+	BindPort int
 	HtmlPath string
 }
 type DbSection struct {
@@ -24,7 +25,7 @@ func (c *Config) LoadFromFile(file string) error {
 
 	err := gcfg.ReadFileInto(c, file)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if c.Server.BindAddr == "" {
