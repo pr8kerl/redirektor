@@ -4,7 +4,7 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0"/>
-  <title>F5 Switcher</title>
+  <title>redirektor</title>
 
   <!-- CSS  -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -51,18 +51,20 @@
 			  <template v-if="response.data">
         <div class="row center col s12">
 
-				<table>
+				<table class="highlight">
         <thead>
           <tr>
-              <th data-field="stack">Stack Name</th>
-              <th data-field="edit"></th>
+              <th data-field="prefix">prefix</th>
+              <th data-field="incoming">incoming</th>
+              <th data-field="outgoing">outgoing</th>
           </tr>
         </thead>
 
-        <tbody v-for="(gkey, group) in response.data" track-by="$index">
-          <tr v-bind:class="response.data[gkey].state" class="darken-2 white-text">
-									<td>{{ gkey }}</td>
-									<td v-bind:class="response.data[gkey].state" class="right lighten-3"><a class="btn-flat waves-effect waves-light modal-trigger tooltipped" href="#{{ gkey }}" data-position="left" data-delay="50" data-tooltip="switch stack {{ gkey }}" onClick="$('#{{ gkey }}').openModal();"><i class="material-icons">autorenew</i></a></td>
+        <tbody v-for="(row) in response.data" track-by="$index">
+          <tr>
+									<td>{{ row.prefix }}</td>
+									<td>{{ row.incoming }}</td>
+									<td>{{ row.outgoing }}</td>
           </tr>
 				</tbody>
 
@@ -162,7 +164,7 @@
 	<script src="js/materialize.min.js"></script>
 	<script src="js/vue.min.js"></script>
 	<script src="js/vue-resource.min.js"></script>
-	<script src="js/init.js"></script>
+	<script src="js/app.js"></script>
 
   </body>
 </html>

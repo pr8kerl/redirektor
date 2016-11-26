@@ -59,7 +59,7 @@ var vm = new Vue({
     ready: function () {
 
       // GET request
-      this.$http.get('/api/group', function (resp, status, request) {
+      this.$http.get('/api/redirekts', function (resp, status, request) {
           // set data on vm
           this.$set('response', resp)
           this.$set('user', resp.user)

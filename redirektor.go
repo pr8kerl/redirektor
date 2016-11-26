@@ -21,7 +21,7 @@ type RedirektRequestResponse struct {
 	Db     string `json:"db"`
 	Prefix string `json:"prefix"`
 	InUrl  string `json:"incoming"`
-	OutUrl string `json:"outcoming"`
+	OutUrl string `json:"outgoing"`
 }
 type DbsResponse struct {
 	Dbs []DbResponse `json:"dbs"`
@@ -155,14 +155,13 @@ func (r *Redirektor) GetAll(c *gin.Context) {
 			// make response fit the new records
 			t := make([]RedirektRequestResponse, len(response), (cap(response) + sz))
 			copy(t, response)
-			response = t
+			response = append(t, dbresponse...)
 		} else {
-
-			response = make([]RedirektRequestResponse, 0, sz)
+			response = dbresponse
 		}
 
 	}
-	c.JSON(http.StatusOK, gin.H{"response": response})
+	c.JSON(http.StatusOK, gin.H{"data": response})
 	return
 }
 
@@ -175,7 +174,7 @@ func (r *Redirektor) Get(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"response": dbresponse})
+	c.JSON(http.StatusOK, gin.H{"data": dbresponse})
 	return
 
 }
