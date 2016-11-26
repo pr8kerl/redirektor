@@ -48,7 +48,7 @@ func main() {
 	//gin.SetMode(gin.ReleaseMode)
 	s := gin.New()
 	// Global middlewares
-	//s.Use(MyLogger(gin.DefaultWriter))
+	s.Use(MyLogger(gin.DefaultWriter))
 	s.Use(gin.Recovery())
 	s.Use(SetJellyBeans())
 	//r.Use(GetUser)
