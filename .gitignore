@@ -5,6 +5,9 @@
 # Don't ignore .gitignore and *.foo files
 !.gitignore
 !*.go
+!*.js
+!*.css
+!*.html
 src
 pkg
 
