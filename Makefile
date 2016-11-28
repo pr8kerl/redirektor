@@ -8,6 +8,7 @@ all: redirektor
 
 deps: $(DEPS)
 	GOPATH=$(GOPATH) go get -u $^
+	npm install
 
 redirektor: main.go config.go redirektor.go
     # always format code
@@ -16,8 +17,8 @@ redirektor: main.go config.go redirektor.go
 		GOPATH=$(GOPATH) go build -o $@ -v $^
 		touch $@
 
-windows:
-	  gox -os="windows"
+frontend:
+		npm run build-dev
 
 .PHONY: $(DEPS) clean
 
