@@ -161,7 +161,7 @@ func (r *Redirektor) GetAll(c *gin.Context) {
 		}
 
 	}
-	c.JSON(http.StatusOK, gin.H{"data": response})
+	c.JSON(http.StatusOK, gin.H{"response": response})
 	return
 }
 
@@ -174,7 +174,7 @@ func (r *Redirektor) Get(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": dbresponse})
+	c.JSON(http.StatusOK, gin.H{"response": dbresponse})
 	return
 
 }

@@ -10,22 +10,17 @@
 // Examples
 // component
 Vue.component('list-redirekts', {
-  template: '#redirekts-template',
+  template: '#list',
   data: function() {
     return {
-      posts: [
-        'Vue.js: The Basics',
-        'Vue.js Components',
-        'Server Side Rendering with Vue',
-        'Vue + Firebase'
-      ]
+      response: []
     }
   }
 })
 // router-vue
 // http://router.vuejs.org/en/advanced/data-fetching.html
-<template>
-  <div class="post">
+<template id="list">
+  <div class="list">
     <div class="loading" v-if="loading">
       Loading...
     </div>
@@ -34,17 +29,18 @@ Vue.component('list-redirekts', {
       {{ error }}
     </div>
 
-    <div v-if="post" class="content">
+    <div v-if="response" class="content">
       <h2>{{ post.title }}</h2>
       <p>{{ post.body }}</p>
     </div>
   </div>
 </template>
+
 export default {
   data () {
     return {
       loading: false,
-      post: null,
+      response: null,
       error: null
     }
   },

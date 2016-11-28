@@ -54,10 +54,8 @@ func main() {
 	//r.Use(GetUser)
 
 	//r.GET("/", index)
-	s.StaticFile("/", "./public/index.html")
-	s.StaticFS("/css", http.Dir("public/css"))
-	s.StaticFS("/js", http.Dir("public/js"))
-	s.StaticFS("/fonts", http.Dir("public/fonts"))
+	s.StaticFile("/", "dist/index.html")
+	s.StaticFS("/assets", http.Dir("dist/assets"))
 	//s.StaticFS(cfg.Server.HtmlPath, http.Dir(cfg.Server.HtmlPath))
 
 	api := s.Group("/api")

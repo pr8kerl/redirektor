@@ -2,7 +2,7 @@ GOROOT := /usr/local/go
 GOPATH := $(shell pwd)
 GOBIN  := $(GOPATH)/bin
 PATH   := $(GOROOT)/bin:$(PATH)
-DEPS   := github.com/gin-gonic/gin gopkg.in/redis.v5 github.com/asaskevich/govalidator
+DEPS   := github.com/gin-gonic/gin gopkg.in/gcfg.v1 gopkg.in/redis.v5 github.com/asaskevich/govalidator
 
 all: redirektor
 
