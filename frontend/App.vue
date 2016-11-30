@@ -15,7 +15,7 @@
    </header>
 
     <v-container>
-      <div class="section no-pad-bot" id="index-banner">
+      <div class="section no-pad-bot center" id="index-banner">
         <img src="/assets/img/logo.png">
         <h1 class="header center orange-text">{{ msg }}</h1>
 
@@ -32,7 +32,23 @@
           </div>
 
           <div v-if="redirekts" class="content">
-            <p>{{ redirekts }}</p>
+            <input v-model="filter" class="form-control" placeholder="search by incoming">
+            <table>
+              <thead>
+                <tr>
+                    <th data-field="prefix">prefix</th>
+                    <th data-field="incoming">incoming</th>
+                    <th data-field="outgoing">outgoing</th>
+                </tr>
+              </thead>
+              <tbody>
+              <tr v-for="redirekt in filterRedirekts(filter)">
+              <td>{{ redirekt.prefix }}</td>
+              <td>{{ redirekt.incoming }}</td>
+              <td>{{ redirekt.outgoing }}</td>
+              </tr>
+              </tbody>
+            </table>
           </div>
 
       </div>
@@ -48,6 +64,7 @@ export default {
       msg: 'Welcome to Your Vue.js App',
       redirekts: null,
       loading: true,
+      filter: '',
       error: null
     }
   },
@@ -61,6 +78,12 @@ export default {
           this.loading = false;
           this.error = 'there was an error';
           console.log(JSON.stringify(response.statusText));
+    },
+    filterRedirekts: function(value) {
+            return this.redirekts.filter(function(item) {
+                return item.prefix.indexOf(value) > -1 ||
+                       item.incoming.indexOf(value) > -1;
+            });
     }
   },
   created: function () {
