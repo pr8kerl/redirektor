@@ -6,9 +6,10 @@
 !.gitignore
 !*.go
 !*.js
+!*.json
 !*.css
 !*.html
+dist/assets/js/app.js
+node_modules
 src
-pkg
-frontend
 
