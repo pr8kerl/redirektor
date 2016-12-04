@@ -18,7 +18,7 @@ type DbSection struct {
 	DbAddr     string
 	DbID       int
 	DbPassword string
-	KeyPrefix  string
+	Prefix     []string
 }
 
 func (c *Config) LoadFromFile(file string) error {

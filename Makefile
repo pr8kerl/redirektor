@@ -20,7 +20,7 @@ redirektor: main.go config.go redirektor.go
 frontend:
 		npm run build-dev
 
-.PHONY: $(DEPS) clean
+.PHONY: $(DEPS) clean deps frontend
 
 clean:
 	rm -f redirektor

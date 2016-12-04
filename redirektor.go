@@ -6,28 +6,30 @@ import (
 	"github.com/gin-gonic/gin"
 	"gopkg.in/redis.v5"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
 
 type Redirekt struct {
-	Prefix string
-	InUrl  url.URL
-	OutUrl url.URL
-}
-
-type RedirektRequestResponse struct {
-	Db     string `json:"db"`
 	Prefix string `json:"prefix"`
 	InUrl  string `json:"incoming"`
 	OutUrl string `json:"outgoing"`
 }
+
+type RedirektsResponse struct {
+	Prefixes  []string   `json:"prefixes"`
+	Redirekts []Redirekt `json:"redirekts"`
+}
+
 type DbsResponse struct {
 	Dbs []DbResponse `json:"dbs"`
 }
 type DbResponse struct {
 	Name string `json:"name"`
+}
+type Db struct {
+	Client   *redis.Client
+	Prefixes []string
 }
 
 type RedirektService interface {
@@ -42,16 +44,20 @@ type Redirektor struct {
 	// Returns the current time.
 	Now func() time.Time
 
-	// db options
-	Dbs    map[string]redis.Client
 	config *Config
+	// map of db objects
+	Dbs map[string]Db
+
+	// all available prefixes
+	Prefixes []string
 }
 
 func NewRedirektor(c *Config) (*Redirektor, error) {
 
 	r := Redirektor{config: c}
 	i := len(c.Db)
-	r.Dbs = make(map[string]redis.Client, i)
+	psz := 0 // store max size of slice for all db prefixes
+	r.Dbs = make(map[string]Db, i)
 	for key, dbprofile := range c.Db {
 		fmt.Println("creating db connection for profile:", key)
 		client := redis.NewClient(&redis.Options{
@@ -60,7 +66,16 @@ func NewRedirektor(c *Config) (*Redirektor, error) {
 			DB:       dbprofile.DbID,
 			//              ReadOnly: true,
 		})
-		r.Dbs[key] = *client
+		db := Db{
+			Client:   client,
+			Prefixes: dbprofile.Prefix,
+		}
+		r.Dbs[key] = db
+		psz += len(dbprofile.Prefix)
+	}
+	r.Prefixes = make([]string, psz)
+	for _, dbprofile := range c.Db {
+		r.Prefixes = append(r.Prefixes, dbprofile.Prefix...)
 	}
 	return &r, nil
 
@@ -81,31 +96,31 @@ func (r *Redirektor) GetDBs(c *gin.Context) {
 	return
 }
 
-func (r *Redirektor) getDB(dbname string) ([]RedirektRequestResponse, error) {
+func (r *Redirektor) getDB(dbname string) ([]Redirekt, error) {
 
-	dbclient, ok := r.Dbs[dbname]
+	db, ok := r.Dbs[dbname]
 	if !ok {
 		return nil, fmt.Errorf("error: unknown db name: %s\n", dbname)
 	}
 
-	sz, err := dbclient.DbSize().Result()
+	sz, err := db.Client.DbSize().Result()
 	if err != nil {
 		return nil, fmt.Errorf("error: could not get db size: %s\n", err)
 	}
-	response := make([]RedirektRequestResponse, 0, sz)
+	redirekts := make([]Redirekt, 0, sz)
 
 	var cursor uint64
 	for {
 		var rkeys []string
 		var err error
-		rkeys, cursor, err = dbclient.Scan(cursor, "", 100).Result()
+		rkeys, cursor, err = db.Client.Scan(cursor, "", 100).Result()
 		if err != nil {
 			return nil, fmt.Errorf("error: could not scan db: %s\n", err)
 		}
 		for x := range rkeys {
 			//HERE
 			k := rkeys[x]
-			outurl, err := dbclient.Get(k).Result()
+			outurl, err := db.Client.Get(k).Result()
 			if err != nil {
 				return nil, fmt.Errorf("error: could not get from db: %s\n", err)
 			}
@@ -121,14 +136,13 @@ func (r *Redirektor) getDB(dbname string) ([]RedirektRequestResponse, error) {
 				fmt.Printf("getDB drop invalid record: %q\n", s)
 				continue
 			}
-			row := RedirektRequestResponse{
-				Db:     dbname,
+			row := Redirekt{
 				Prefix: prefix,
 				InUrl:  inurl,
 				OutUrl: outurl,
 			}
-			response = append(response, row)
-			//				fmt.Printf("response: %s:%s %s\n", dbname, prefix, inurl, outurl)
+			redirekts = append(redirekts, row)
+			//				fmt.Printf("redirekts: %s:%s %s\n", dbname, prefix, inurl, outurl)
 
 		}
 		if cursor == 0 {
@@ -136,30 +150,35 @@ func (r *Redirektor) getDB(dbname string) ([]RedirektRequestResponse, error) {
 		}
 	}
 
-	return response, nil
+	return redirekts, nil
 }
 
 func (r *Redirektor) GetAll(c *gin.Context) {
 
-	var response []RedirektRequestResponse
+	var redirekts []Redirekt
+
 	for dbname, _ := range r.Dbs {
 
-		dbresponse, err := r.getDB(dbname)
+		dbredirekts, err := r.getDB(dbname)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error getting db": err})
 			return
 		}
 
-		sz := len(dbresponse)
-		if len(response) > 0 {
-			// make response fit the new records
-			t := make([]RedirektRequestResponse, len(response), (cap(response) + sz))
-			copy(t, response)
-			response = append(t, dbresponse...)
+		sz := len(dbredirekts)
+		if len(redirekts) > 0 {
+			// make redirekts fit the new records
+			t := make([]Redirekt, len(redirekts), (cap(redirekts) + sz))
+			copy(t, redirekts)
+			redirekts = append(t, dbredirekts...)
 		} else {
-			response = dbresponse
+			redirekts = dbredirekts
 		}
 
+	}
+	response := RedirektsResponse{
+		r.Prefixes,
+		redirekts,
 	}
 	c.JSON(http.StatusOK, gin.H{"response": response})
 	return
@@ -168,20 +187,20 @@ func (r *Redirektor) GetAll(c *gin.Context) {
 func (r *Redirektor) Get(c *gin.Context) {
 	dbname := c.Param("dbname")
 
-	dbresponse, err := r.getDB(dbname)
+	redirekts, err := r.getDB(dbname)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error getting db": err})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"response": dbresponse})
+	c.JSON(http.StatusOK, gin.H{"redirekts": redirekts})
 	return
-
 }
+
 func (r *Redirektor) Set(c *gin.Context) {
 	dbname := c.Param("dbname")
 
-	dbclient, ok := r.Dbs[dbname]
+	db, ok := r.Dbs[dbname]
 	if !ok {
 		c.JSON(http.StatusInternalServerError, gin.H{"error: unknown db name": dbname})
 		return
@@ -194,8 +213,8 @@ func (r *Redirektor) Set(c *gin.Context) {
 		return
 	}
 
-	inurl := json.InUrl.String()
-	outurl := json.OutUrl.String()
+	inurl := json.InUrl
+	outurl := json.OutUrl
 
 	valid := govalidator.IsURL(inurl)
 	if !valid {
@@ -215,7 +234,7 @@ func (r *Redirektor) Set(c *gin.Context) {
 
 	key := json.Prefix + ":" + inurl
 
-	err = dbclient.Set(key, outurl, 0).Err()
+	err = db.Client.Set(key, outurl, 0).Err()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error: setting key": key})
 		return
