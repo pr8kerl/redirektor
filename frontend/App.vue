@@ -36,16 +36,20 @@ import Editor from './Editor.vue'
           <div v-if="redirektdata" class="content">
             <div class="row">
               <div class="col s1">
-                <v-icon prefix>search</v-icon>
+                <i class="material-icons prefix">search</i>
               </div>
               <div class="col s10">
                 <input v-model="filter" class="form-control" placeholder="filter incoming">
+              </div>
+              <div class="col s1">
+                <a v-modal:edit v-on:click="selectRedirekt()" ><i class="small material-icons">add_circle_outline</i></a></td>
               </div>
             </div>
             <div class="row">
             <table id="tableredirekts" class="striped">
               <thead>
                 <tr>
+                    <th data-field="edit">edit</th>
                     <th data-field="prefix">prefix</th>
                     <th data-field="incoming">incoming</th>
                     <th data-field="outgoing">outgoing</th>
@@ -53,7 +57,8 @@ import Editor from './Editor.vue'
               </thead>
               <tbody>
               <tr v-for="redirekt in filterRedirekts(filter)">
-              <td><a class="btn waves" v-modal:edit v-on:click="selectRedirekt(redirekt)">{{ redirekt.prefix }}</a></td>
+              <td><a v-modal:edit v-on:click="selectRedirekt(redirekt)"><i class="small material-icons">mode_edit</i></a></td>
+              <td>{{ redirekt.prefix }}</td>
               <td>{{ redirekt.incoming }}</td>
               <td>{{ redirekt.outgoing }}</td>
               </tr>
@@ -95,8 +100,13 @@ export default {
   components: {
     'editor': {
       name: 'editor',
-      props: ['selection'],
-      template: '<tr><td>{{ selection.prefix }}</td><td>{{ selection.incoming }}</td><td>{{ selection.outgoing }}</td></tr>'
+      props: ['selection' ],
+      template: '<tr> <td>{{ selection.prefix }}</td><td>{{ selection.incoming }}</td> <td><input v-model="selection.outgoing" class="form-control" placeholder="selection.outgoing"></td> </tr>'
+    },
+    'add': {
+      name: 'add',
+      props: ['selection', 'redirektdata' ],
+      template: '<tr> <td><div class="input-field"> <v-select name="select" id="select" :items="redirektdata.prefixes" ></v-select> <label for="select">prefix</label> </div></td><td>{{ selection.incoming }}</td> <td><input v-model="selection.outgoing" class="form-control" placeholder="selection.outgoing"></td> </tr>'
     }
   },
   data () {
@@ -121,14 +131,21 @@ export default {
           console.log(JSON.stringify(response.statusText));
     },
     selectRedirekt: function(redir) {
-          this.selection = redir;
-          console.log(JSON.stringify(redir));
+          if (redir !== undefined) {
+            this.selection = redir;
+            console.log(JSON.stringify(redir));
+          } else {
+            this.selection = { prefix: '', incoming: '', outgoing: '' };
+          }
     },
     filterRedirekts: function(value) {
             return this.redirektdata.redirekts.filter(function(item) {
                 return item.prefix.indexOf(value) > -1 ||
                        item.incoming.indexOf(value) > -1;
             });
+    },
+    putRedirekt: function(redir) {
+        this.$http.put('/api/redirekts', redir).then(this.putOk,this.redirektsError);
     }
   },
   created: function () {

@@ -63,7 +63,7 @@ func main() {
 		api.GET("/dbs", r.GetDBs)
 		api.GET("/redirekts", r.GetAll)
 		api.GET("/redirekts/:dbname", r.Get)
-		api.PUT("/redirekts/:dbname", r.Set)
+		api.PUT("/redirekts", r.Set)
 	}
 
 	bindaddress := fmt.Sprintf("%s:%d", cfg.Server.BindAddr, cfg.Server.BindPort)
