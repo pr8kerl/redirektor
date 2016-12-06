@@ -6,7 +6,7 @@ import VueResource from 'vue-resource'
 Vue.use(VueResource)
 Vue.use(Materials)
 
-new Vue({
+var vm = new Vue({
   el: '#app',
   render: h => h(App)
 })

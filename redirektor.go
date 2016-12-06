@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gopkg.in/redis.v5"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -36,6 +37,7 @@ type RedirektService interface {
 	GetDBs(*gin.Context)
 	Get(*gin.Context)
 	Set(*gin.Context)
+	Delete(*gin.Context)
 }
 
 // Client represents a client to the RedirektService
@@ -46,7 +48,8 @@ type Redirektor struct {
 
 	config *Config
 	// map of db objects
-	Dbs map[string]Db
+	Dbs       map[string]Db
+	Prefix2Db map[string]Db
 
 	// all available prefixes
 	Prefixes []string
@@ -74,8 +77,12 @@ func NewRedirektor(c *Config) (*Redirektor, error) {
 		psz += len(dbprofile.Prefix)
 	}
 	r.Prefixes = make([]string, psz)
-	for _, dbprofile := range c.Db {
+	r.Prefix2Db = make(map[string]Db, psz)
+	for key, dbprofile := range c.Db {
 		r.Prefixes = append(r.Prefixes, dbprofile.Prefix...)
+		for _, pfx := range dbprofile.Prefix {
+			r.Prefix2Db[pfx] = r.Dbs[key]
+		}
 	}
 	return &r, nil
 
@@ -161,7 +168,7 @@ func (r *Redirektor) GetAll(c *gin.Context) {
 
 		dbredirekts, err := r.getDB(dbname)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error getting db": err})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -189,7 +196,7 @@ func (r *Redirektor) Get(c *gin.Context) {
 
 	redirekts, err := r.getDB(dbname)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error getting db": err})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -198,13 +205,6 @@ func (r *Redirektor) Get(c *gin.Context) {
 }
 
 func (r *Redirektor) Set(c *gin.Context) {
-	dbname := c.Param("dbname")
-
-	db, ok := r.Dbs[dbname]
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error: unknown db name": dbname})
-		return
-	}
 
 	var json Redirekt
 	err := c.BindJSON(&json)
@@ -216,27 +216,77 @@ func (r *Redirektor) Set(c *gin.Context) {
 	inurl := json.InUrl
 	outurl := json.OutUrl
 
-	valid := govalidator.IsURL(inurl)
-	if !valid {
-		c.JSON(http.StatusInternalServerError, gin.H{"error: invalid incoming url": inurl})
+	_, err = url.Parse(inurl)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
 		return
 	}
-	valid = govalidator.IsURL(outurl)
-	if !valid {
-		c.JSON(http.StatusInternalServerError, gin.H{"error: invalid outgoing url": outurl})
-		return
-	}
-	valid = govalidator.IsPrintableASCII(json.Prefix)
-	if !valid {
-		c.JSON(http.StatusInternalServerError, gin.H{"error:": "invalid prefix string"})
+	_, err = url.Parse(outurl)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
 		return
 	}
 
+	valid := govalidator.IsPrintableASCII(json.Prefix)
+	if !valid {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid prefix string"})
+		return
+	}
+
+	fmt.Printf("set: %s:%s\n", json.Prefix, json.InUrl)
+
+	db, validpfx := r.Prefix2Db[json.Prefix]
+	if !validpfx {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid prefix string"})
+		return
+	}
 	key := json.Prefix + ":" + inurl
 
 	err = db.Client.Set(key, outurl, 0).Err()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error: setting key": key})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not set redis key"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "AOK"})
+	return
+
+}
+
+func (r *Redirektor) Delete(c *gin.Context) {
+
+	var json Redirekt
+	err := c.BindJSON(&json)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid redirekt format"})
+		return
+	}
+
+	inurl := json.InUrl
+
+	_, err = url.Parse(inurl)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		return
+	}
+
+	valid := govalidator.IsPrintableASCII(json.Prefix)
+	if !valid {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid prefix string"})
+		return
+	}
+
+	fmt.Printf("delete: %s:%s\n", json.Prefix, json.InUrl)
+
+	db, validpfx := r.Prefix2Db[json.Prefix]
+	if !validpfx {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid prefix string"})
+		return
+	}
+	key := json.Prefix + ":" + inurl
+
+	err = db.Client.Del(key).Err()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not delete redis key"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "AOK"})
