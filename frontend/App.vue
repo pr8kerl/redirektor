@@ -15,7 +15,6 @@
      </nav>
    </header>
 
-    <div>
       <div class="section no-pad-bot center" id="index-banner">
         <h2 class="header center orange-text">{{ msg }}</h2>
 
@@ -36,7 +35,6 @@
           </div>
 
 
-
           <div v-if="redirektdata" class="content">
             <div class="row">
               <div class="col s1">
@@ -46,7 +44,7 @@
                 <input v-model="filter" class="form-control" placeholder="filter incoming">
               </div>
               <div class="col s1">
-                <a v-modal:edit v-on:click="selectRedirekt()" ><i class="small material-icons">add_circle_outline</i></a></td>
+                <a v-modal:add v-on:click="initAddRedirekt()"><i class="small material-icons">add_circle_outline</i></a></td>
               </div>
             </div>
             <div class="row">
@@ -75,16 +73,7 @@
           <div id="edit" class="modal">
             <div class="modal-content">
               <h4>edit redirekt</h4>
-              <table id="tableredirekts">
-              <thead>
-                <tr>
-                    <th data-field="prefix">prefix</th>
-                    <th data-field="incoming">incoming</th>
-                    <th data-field="outgoing">outgoing</th>
-                </tr>
-              </thead>
-              <editor v-bind:selection=this.selection ></editor>
-              </table>
+                <editor v-bind:selection=this.selection></editor>
             </div>
             <div class="modal-footer">
               <a class="modal-action modal-close waves-effect green btn-flat" v-on:click="putRedirekt(selection)" >Update</a>
@@ -92,8 +81,35 @@
             </div>
           </div>
 
+          <div id="add" class="modal">
+            <div class="modal-content">
+              <h4>add redirekt</h4>
+                <div id="addredirekt" class="container"> 
+                  <div class="row left-align"> 
+                    <span class="col s2">prefix</span>
+                    <span class="col s10">
+                      <div class="input-field">
+                        <div class="input-field"> 
+                          <v-select v-model="selection.prefix" name="select" id="select" :items="prefixes" ></v-select>
+                        </div>
+                      </div>
+                    </span>
+                  </div>
+                  <div class="row left-align">
+                    <span class="col s2">incoming</span><span class="col s10"><input v-model="selection.incoming" class="form-control" placeholder="incoming url"></span>
+                  </div>
+                  <div class="row left-align">
+                    <span class="col s2">outgoing</span><span class="col s10"><input v-model="selection.outgoing" class="form-control" placeholder="outgoing url"></span>
+                  </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+              <a class="modal-action modal-close waves-effect green btn-flat" v-on:click="addRedirekt(selection)" >Add</a>
+              <a class="modal-action modal-close waves-effect orange btn-flat" >Cancel</a>
+            </div>
+          </div>
+
       </div>
-    </div> <!-- container -->
 
   </div>
 </template>
@@ -105,12 +121,7 @@ export default {
     'editor': {
       name: 'editor',
       props: ['selection' ],
-      template: '<tr> <td>{{ selection.prefix }}</td><td>{{ selection.incoming }}</td> <td><input v-model="selection.outgoing" class="form-control" placeholder="selection.outgoing"></td> </tr>'
-    },
-    'add': {
-      name: 'add',
-      props: ['selection', 'redirektdata' ],
-      template: '<tr> <td><div class="input-field"> <v-select name="select" id="select" :items="redirektdata.prefixes" ></v-select> <label for="select">prefix</label> </div></td><td>{{ selection.incoming }}</td> <td><input v-model="selection.outgoing" class="form-control" placeholder="selection.outgoing"></td> </tr>'
+      template: '<div id="editredirekt" class="container"> <div class="row left-align"> <span class="col s2 left-align">prefix</span><span class="col s10">{{ selection.prefix }}</span> </div> <div class="row left-align"> <span class="col s2">incoming</span><span class="col s10">{{ selection.incoming }}</span> </div> <div class="row left-align"> <span class="col s2">outgoing</span><span class="col s10"><input v-model="selection.outgoing" class="form-control" placeholder="selection.outgoing"></span> </div></div>'
     }
   },
   data () {
@@ -121,12 +132,14 @@ export default {
       loading: true,
       filter: '',
       status: null,
+      prefixes: [ { id: 1, text: "aem", }, { id: 2, text: "aemau", }, { id: 3, text: "aemnz", }, { id: 4, text: "fw", }, { id: 5, text: "fwau", }, { id: 6, text: "fwnz" } ],
       error: null
     }
   },
   methods: {
     redirektsOk: function(response) {
-          this.redirektdata = response.body.response;
+          this.redirektdata = response.body.response.redirekts;
+          this.selection = { prefix: '', incoming: '', outgoing: '' };
           this.loading = false;
           this.error = null;
     },
@@ -134,6 +147,36 @@ export default {
           this.loading = false;
           this.error = response.body.error;
           console.log(JSON.stringify(response.statusText));
+    },
+    initAddRedirekt: function() {
+          this.status = '';
+          this.error = null;
+          console.log(JSON.stringify(this.prefixes));
+    },
+    addRedirekt: function(redir) {
+        switch(redir.prefix) {
+          case "1":
+            redir.prefix="aem";
+            break;
+          case "2":
+            redir.prefix="aemau";
+            break;
+          case "3":
+            redir.prefix="aemnz";
+            break;
+          case "4":
+            redir.prefix="fw";
+            break;
+          case "5":
+            redir.prefix="fwau";
+            break;
+          case "6":
+            redir.prefix="fwnz";
+            break;
+          default:
+        }
+        console.log(JSON.stringify(redir));
+        this.$http.put('/api/redirekts', redir).then(this.putOk,this.redirektsError);
     },
     selectRedirekt: function(redir) {
           this.status = '';
@@ -146,7 +189,7 @@ export default {
           }
     },
     filterIncoming: function(value) {
-            return this.redirektdata.redirekts.filter(function(item) {
+            return this.redirektdata.filter(function(item) {
                 return item.incoming.toLowerCase().indexOf(value) > -1;
             });
     },
@@ -160,7 +203,7 @@ export default {
         this.$http.put('/api/redirekts', redir).then(this.putOk,this.redirektsError);
     },
     deleteOk: function(response) {
-          deleted = this.redirektdata.redirekts.filter(function(item) {
+          deleted = this.redirektdata.filter(function(item) {
             return item.prefix !== this.selection.prefix && item.incoming !== this.selection.incoming;
           });
           this.redirektdata = deleted;
@@ -202,6 +245,5 @@ li {
 }
 
 #tableredirekts {
-  margin-left: 1em;
 }
 </style>

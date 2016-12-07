@@ -76,7 +76,7 @@ func NewRedirektor(c *Config) (*Redirektor, error) {
 		r.Dbs[key] = db
 		psz += len(dbprofile.Prefix)
 	}
-	r.Prefixes = make([]string, psz)
+	r.Prefixes = make([]string, 0, psz)
 	r.Prefix2Db = make(map[string]Db, psz)
 	for key, dbprofile := range c.Db {
 		r.Prefixes = append(r.Prefixes, dbprofile.Prefix...)
