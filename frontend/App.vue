@@ -90,21 +90,21 @@
                     <span class="col s10">
                       <div class="input-field">
                         <div class="input-field"> 
-                          <v-select v-model="selection.prefix" name="select" id="select" :items="prefixes" ></v-select>
+                          <v-select v-model="addition.prefix" name="select" id="select" :items="prefixes" ></v-select>
                         </div>
                       </div>
                     </span>
                   </div>
                   <div class="row left-align">
-                    <span class="col s2">incoming</span><span class="col s10"><input v-model="selection.incoming" class="form-control" placeholder="incoming url"></span>
+                    <span class="col s2">incoming</span><span class="col s10"><input v-model="addition.incoming" class="form-control" placeholder="incoming url"></span>
                   </div>
                   <div class="row left-align">
-                    <span class="col s2">outgoing</span><span class="col s10"><input v-model="selection.outgoing" class="form-control" placeholder="outgoing url"></span>
+                    <span class="col s2">outgoing</span><span class="col s10"><input v-model="addition.outgoing" class="form-control" placeholder="outgoing url"></span>
                   </div>
                 </div>
             </div>
             <div class="modal-footer">
-              <a class="modal-action modal-close waves-effect green btn-flat" v-on:click="addRedirekt(selection)" >Add</a>
+              <a class="modal-action modal-close waves-effect green btn-flat" v-on:click="addRedirekt(addition)" >Add</a>
               <a class="modal-action modal-close waves-effect orange btn-flat" >Cancel</a>
             </div>
           </div>
@@ -129,6 +129,7 @@ export default {
       msg: 'making your redirect life easier.',
       redirektdata: null,
       selection: { prefix: '', incoming: '', outgoing: '' },
+      addition: { prefix: '', incoming: '', outgoing: '' },
       loading: true,
       filter: '',
       status: null,
@@ -142,6 +143,7 @@ export default {
           this.selection = { prefix: '', incoming: '', outgoing: '' };
           this.loading = false;
           this.error = null;
+          this.status = null;
     },
     redirektsError: function(response) {
           this.loading = false;
@@ -176,7 +178,7 @@ export default {
           default:
         }
         console.log(JSON.stringify(redir));
-        this.$http.put('/api/redirekts', redir).then(this.putOk,this.redirektsError);
+        this.$http.put('/api/redirekts', redir).then(this.addOk,this.redirektsError);
     },
     selectRedirekt: function(redir) {
           this.status = '';
@@ -194,22 +196,34 @@ export default {
             });
     },
     putOk: function(response) {
-          this.status = response.body.response;
-          this.loading = false;
+          this.status = "redirect updated aok: " + this.selection.prefix + ":" + this.selection.incoming;
+          this.loading = true;
+          this.selection = { prefix: '', incoming: '', outgoing: '' };
+          this.redirektdata = null;
           this.error = null;
+          this.filter = '';
+          this.$http.get('/api/redirekts').then(this.redirektsOk,this.redirektsError);
+    },
+    addOk: function(response) {
+          this.status = "redirect added aok: " + this.addition.prefix + ":" + this.addition.incoming;
+          this.loading = true;
+          this.addition = { prefix: '', incoming: '', outgoing: '' };
+          this.redirektdata = null;
+          this.error = null;
+          this.filter = '';
+          this.$http.get('/api/redirekts').then(this.redirektsOk,this.redirektsError);
     },
     putRedirekt: function(redir) {
         console.log(JSON.stringify(redir));
         this.$http.put('/api/redirekts', redir).then(this.putOk,this.redirektsError);
     },
     deleteOk: function(response) {
-          deleted = this.redirektdata.filter(function(item) {
-            return item.prefix !== this.selection.prefix && item.incoming !== this.selection.incoming;
-          });
-          this.redirektdata = deleted;
           this.status = "redirect deleted ok: " + this.selection.prefix + ":" + this.selection.incoming;
-          this.loading = false;
+          this.loading = true;
+          this.redirektdata = null;
           this.error = null;
+          this.filter = '';
+          this.$http.get('/api/redirekts').then(this.redirektsOk,this.redirektsError);
     },
     deleteRedirekt: function(redir) {
         console.log("delete: " + JSON.stringify(redir));
