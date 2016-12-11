@@ -10,7 +10,7 @@
     "build-prod": "cross-env NODE_ENV=production webpack --progress --hide-modules"
   },
   "dependencies": {
-    "vue": "^2.1.0",
+    "vue": "*",
     "vue-materials": "*"
   },
   "devDependencies": {
@@ -20,10 +20,10 @@
     "cross-env": "^3.0.0",
     "css-loader": "^0.25.0",
     "file-loader": "^0.9.0",
-    "vue-loader": "^10.0.0",
-    "vue-resource": "^1.0.3",
-    "vue-router": "^2.0.3",
-    "vue-template-compiler": "^2.1.0",
+    "vue-loader": "*",
+    "vue-resource": "*",
+    "vue-router": "*",
+    "vue-template-compiler": "*",
     "webpack": "^2.1.0-beta.25",
     "webpack-dev-server": "^2.1.0-beta.0"
   }

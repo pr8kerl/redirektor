@@ -16,7 +16,7 @@
    </header>
 
       <div class="section no-pad-bot center" id="index-banner">
-        <h2 class="header center orange-text">{{ msg }}</h2>
+        <h2 class="header center orange-text text-darken-2">{{ msg }}</h2>
 
         <!--[if lt IE 8]>
         <div class="row center pink-text"><h2>You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</h2></div>
@@ -26,16 +26,7 @@
             <v-progress-circular active red red-flash></v-progress-circular>
           </div>
 
-          <div v-if="error" class="error row center red-text">
-            {{ error }}
-          </div>
-
-          <div v-if="status" class="row center green-text">
-            {{ status }}
-          </div>
-
-
-          <div v-if="redirektdata" class="content">
+          <div v-if="redirektdata" class="container">
             <div class="row">
               <div class="col s1">
                 <i class="material-icons prefix">search</i>
@@ -85,8 +76,8 @@
             <div class="modal-content">
               <h4>add redirekt</h4>
                 <div id="addredirekt" class="container"> 
-                  <div class="row left-align"> 
-                    <span class="col s2">prefix</span>
+                  <div class="row left-align valign-wrapper"> 
+                    <span class="col s2 theader">prefix</span>
                     <span class="col s10">
                       <div class="input-field">
                         <div class="input-field"> 
@@ -95,11 +86,11 @@
                       </div>
                     </span>
                   </div>
-                  <div class="row left-align">
-                    <span class="col s2">incoming</span><span class="col s10"><input v-model="addition.incoming" class="form-control" placeholder="incoming url"></span>
+                  <div class="row left-align valign-wrapper">
+                    <span class="col s2 theader">incoming</span><span class="col s10"><input v-model="addition.incoming" class="form-control" placeholder="incoming url"></span>
                   </div>
-                  <div class="row left-align">
-                    <span class="col s2">outgoing</span><span class="col s10"><input v-model="addition.outgoing" class="form-control" placeholder="outgoing url"></span>
+                  <div class="row left-align valign-wrapper">
+                    <span class="col s2 theader">outgoing</span><span class="col s10"><input v-model="addition.outgoing" class="form-control" placeholder="outgoing url"></span>
                   </div>
                 </div>
             </div>
@@ -121,7 +112,7 @@ export default {
     'editor': {
       name: 'editor',
       props: ['selection' ],
-      template: '<div id="editredirekt" class="container"> <div class="row left-align"> <span class="col s2 left-align">prefix</span><span class="col s10">{{ selection.prefix }}</span> </div> <div class="row left-align"> <span class="col s2">incoming</span><span class="col s10">{{ selection.incoming }}</span> </div> <div class="row left-align"> <span class="col s2">outgoing</span><span class="col s10"><input v-model="selection.outgoing" class="form-control" placeholder="selection.outgoing"></span> </div></div>'
+      template: '<div id="editredirekt" class="container"> <div class="row left-align valign-wrapper"> <span class="col s2 left-align">prefix</span><span class="col s10">{{ selection.prefix }}</span> </div> <div class="row left-align valign-wrapper"> <span class="col s2">incoming</span><span class="col s10">{{ selection.incoming }}</span> </div> <div class="row left-align valign-wrapper"> <span class="col s2">outgoing</span><span class="col s10"><input v-model="selection.outgoing" class="form-control" placeholder="selection.outgoing"></span> </div></div>'
     }
   },
   data () {
@@ -148,6 +139,7 @@ export default {
     redirektsError: function(response) {
           this.loading = false;
           this.error = response.body.error;
+          Materialize.toast(this.error, 5000, 'rounded red');
           console.log(JSON.stringify(response.statusText));
     },
     initAddRedirekt: function() {
@@ -196,7 +188,8 @@ export default {
             });
     },
     putOk: function(response) {
-          this.status = "redirect updated aok: " + this.selection.prefix + ":" + this.selection.incoming;
+          this.status = "redirect updated successfully";
+          Materialize.toast(this.status, 5000, 'rounded green');
           this.loading = true;
           this.selection = { prefix: '', incoming: '', outgoing: '' };
           this.redirektdata = null;
@@ -205,7 +198,8 @@ export default {
           this.$http.get('/api/redirekts').then(this.redirektsOk,this.redirektsError);
     },
     addOk: function(response) {
-          this.status = "redirect added aok: " + this.addition.prefix + ":" + this.addition.incoming;
+          this.status = "redirect created successfully";
+          Materialize.toast(this.status, 5000, 'rounded green');
           this.loading = true;
           this.addition = { prefix: '', incoming: '', outgoing: '' };
           this.redirektdata = null;
@@ -218,7 +212,8 @@ export default {
         this.$http.put('/api/redirekts', redir).then(this.putOk,this.redirektsError);
     },
     deleteOk: function(response) {
-          this.status = "redirect deleted ok: " + this.selection.prefix + ":" + this.selection.incoming;
+          this.status = "redirect deleted successfully";
+          Materialize.toast(this.status, 5000, 'rounded green');
           this.loading = true;
           this.redirektdata = null;
           this.error = null;
@@ -244,6 +239,10 @@ export default {
   color: #2c3e50;
 }
 
+a {
+  color: #b71c1c;
+}
+
 h1, h2 {
   font-weight: normal;
 }
@@ -258,6 +257,38 @@ li {
   margin: 0 10px;
 }
 
+.theader {
+  font-weight: bold;
+}
+
 #tableredirekts {
+}
+
+/* label color */
+.input-field label {
+	color: #2c3e50;
+}
+/* label focus color */
+.input-field input[type=text]:focus + label {
+	color: #2c3e50;
+}
+/* label underline focus color */
+.input-field input[type=text]:focus {
+	border-bottom: 1px solid #2c3e50;
+	box-shadow: 0 1px 0 0 #2c3e50;
+}
+/* valid color */
+.input-field input[type=text].valid {
+	border-bottom: 1px solid #2c3e50;
+	box-shadow: 0 1px 0 0 #2c3e50;
+}
+/* invalid color */
+.input-field input[type=text].invalid {
+	border-bottom: 1px solid red;
+	box-shadow: 0 1px 0 0 red;
+}
+/* icon prefix focus color */
+	.input-field .prefix.active {
+	color: #2c3e50;
 }
 </style>
